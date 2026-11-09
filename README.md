@@ -11,6 +11,8 @@ Ett musikquiz för fester och fredagsfika. Quizmastern visar quizet på storskä
 - **Musik och video lämnar aldrig datorn.** Mobilerna får bara frågor och alternativ. Därför spelar Cloudflares gräns på 100 MB per anrop ingen roll.
 - Quizen sparas i mappen `Musikquiz` i hemkatalogen. Varje quiz är en mapp med `quiz.json` och `media/`.
 - **Exportera** ger en `.musikquiz.zip` som någon annan kan **importera**.
+- **Massuppladdning:** dra in alla låtar eller omslag i en runda på en gång. Filnamn som `Artist - Titel.mp4` blir frågor med svaret ifyllt.
+- **AI-hjälp utan konto:** *✨ Skapa med AI* ger en instruktion att klistra in i Claude eller ChatGPT. Svaret klistras tillbaka och blir ett färdigt quiz med frågor, svarsalternativ och fakta. AI-frågor märks tills någon har kontrollerat dem.
 
 Mer finns på hjälpsidan i appen (`/hjalp`).
 

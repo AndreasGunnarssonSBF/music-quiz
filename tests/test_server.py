@@ -85,6 +85,18 @@ check("import av zip med farliga sökvägar", s == 200 and not os.path.exists(os
 s, d = call(ADMIN, "PUT", "/api/admin/import", raw, {"X-Musikquiz": "1"})
 check("exporterad fil går att importera", s == 200)
 
+# Quiz från AI: AI-markering och standardregler följer med
+ai_quiz = {"title": "AI-quiz", "rounds": [{"title": "R1", "type": "video", "instruction": "Vem?", "questions": [
+    {"ai": True, "options": ["Roxette", "Europe", "", ""], "song": "The Look"}]}]}
+s, d = call(ADMIN, "POST", "/api/admin/quiz/new", {"title": "AI-quiz", "quiz": ai_quiz}, H)
+check("skapa quiz från AI-svar", s == 200)
+s, q = call(ADMIN, "GET", f"/api/admin/quiz?id={d['id']}")
+check("AI-markering sparas", q["quiz"]["rounds"][0]["questions"][0].get("ai") is True)
+check("standardregler läggs till", len(q["quiz"]["rules"]) >= 3)
+check("låt utan fil räknas som problem", any("låt- eller videofilen saknas" in p for p in q["problems"]))
+s, info = call(ADMIN, "GET", "/api/admin/info")
+check("biblioteket räknar AI-frågor", next(x for x in info["quizzes"] if x["id"] == d["id"])["aiUnchecked"] == 1)
+
 app.shutdown()
 print("\nAllt OK" if not fails else f"\n{fails} fel")
 sys.exit(1 if fails else 0)

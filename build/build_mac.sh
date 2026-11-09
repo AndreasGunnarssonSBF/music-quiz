@@ -46,7 +46,7 @@ rm -rf "$DIST/Musikquiz.app" "$DIST/Musikquiz-mac.zip"
 # Ingen Dock-ikon: appen öppnar bara webbläsaren och avslutar sig.
 PLIST="$DIST/Musikquiz.app/Contents/Info.plist"
 plutil -replace LSUIElement -bool true "$PLIST"
-plutil -replace CFBundleShortVersionString -string "2.0" "$PLIST"
+plutil -replace CFBundleShortVersionString -string "2.1" "$PLIST"
 plutil -replace CFBundleDisplayName -string "Musikquiz" "$PLIST"
 codesign --force --deep --sign - "$DIST/Musikquiz.app"
 

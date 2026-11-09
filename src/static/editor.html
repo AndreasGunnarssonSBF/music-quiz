@@ -55,6 +55,25 @@
   .player video, .player audio { width: 100%; max-height: 240px; border-radius: 10px; background: #000; margin-top: 10px; }
   .trim { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 8px; align-items: end; margin-top: 10px; }
   .addq { margin-top: 14px; }
+  .q.open { padding: 16px; }
+  .q:not(.open) { padding: 0; }
+  .qsum { display: flex; align-items: center; gap: 12px; padding: 8px 10px; cursor: pointer; min-height: 52px; }
+  .qsum:hover { background: rgba(255,255,255,.04); border-radius: 14px; }
+  .qsum .qn { font-family: var(--display); font-size: 22px; color: var(--muted); width: 26px; text-align: right; flex: none; }
+  .qsum .sic { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex: none; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,.06); color: var(--muted); }
+  .qsum .qtxt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+  .qsum .qst { font-size: 13px; white-space: nowrap; flex: none; max-width: 34%; overflow: hidden; text-overflow: ellipsis; }
+  .qsum .qst.ok { color: var(--ok); }
+  .qsum .qst.warn { color: #ffc94d; }
+  .qsum .qbtns { display: flex; gap: 6px; flex: none; opacity: .5; }
+  .qsum:hover .qbtns { opacity: 1; }
+  .qs { gap: 8px !important; }
+  .q .qh .n { cursor: pointer; }
+  .aibar { display: flex; gap: 10px; align-items: center; padding: 8px 12px; margin: -4px 0 12px; border-radius: 10px; background: rgba(139,92,255,.12); border: 1px solid rgba(139,92,255,.4); font-size: 14px; }
+  .bulk { display: flex; gap: 14px; align-items: center; margin-top: 12px; padding: 14px 16px; border: 2px dashed var(--panel-line); border-radius: 14px; background: rgba(47,214,255,.04); }
+  .bulk.over { border-color: var(--cyan); background: rgba(47,214,255,.12); }
+  .rtools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+  @media (max-width: 760px) { .qsum .qst { display: none; } .qsum .qbtns { display: none; } }
   .sub { font-weight: 700; font-size: 14px; margin: 14px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
   @media (max-width: 760px) { .two, .three, .types, .opts { grid-template-columns: 1fr; } .trim { grid-template-columns: 1fr auto; } }
 </style>
@@ -88,6 +107,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
+<script src="/static/ai.js"></script>
 <script>
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -111,8 +131,6 @@ async function load() {
   const d = await r.json();
   Q = d.quiz; MEDIA = new Set(d.media); PROBLEMS = d.problems;
   Q.rules = Q.rules || []; Q.rounds = Q.rounds || [];
-  const total = Q.rounds.reduce((n, r) => n + (r.questions || []).length, 0);
-  if (total > 15) Q.rounds.forEach((_, i) => collapsed.add(i));
   $("#title").value = Q.title || "";
   $("#rules").value = Q.rules.join("\n");
   renderExtras(); renderRounds(); renderStatus();
@@ -139,6 +157,7 @@ async function save() {
     PROBLEMS = d.problems || [];
     if (!dirty) $("#save").textContent = "Sparat ✓";
     renderStatus();
+    refreshSummaries();
   } catch (e) {
     dirty = true;
     $("#save").textContent = "Kunde inte spara – försöker igen";
@@ -156,6 +175,8 @@ function renderStatus() {
   $("#barTitle").textContent = Q.title || "Namnlöst quiz";
   if (!PROBLEMS.length) s.innerHTML = `<span class="dot ok"></span>Klart att starta`;
   else s.innerHTML = `<span class="dot warn"></span>${PROBLEMS.length} ${PROBLEMS.length === 1 ? "sak" : "saker"} kvar`;
+  const ai = Q.rounds.reduce((n, r) => n + (r.questions || []).filter((q) => q.ai).length, 0);
+  if (ai) s.innerHTML += ` · <span class="badge-ai">AI</span> ${ai} att kontrollera`;
   const box = $("#probs");
   if (!box.classList.contains("hidden")) showProblems();
   // Markera frågor med problem
@@ -289,24 +310,31 @@ function renderExtras() {
 }
 
 // --- Rundor och frågor ------------------------------------------------------------------
+// Frågorna visas som en kompakt lista; en fråga öppnas när man klickar på den.
+const openQs = new WeakSet();
 function renderRounds() {
   const box = $("#rounds");
   box.innerHTML = Q.rounds.map((r, ri) => roundHtml(r, ri)).join("") ||
-    `<div class="card panel" style="text-align:center;color:var(--muted);margin-top:18px">Quizet har inga rundor ännu. Börja med att lägga till en runda.</div>`;
+    `<div class="card panel" style="text-align:center;color:var(--muted);margin-top:18px">Quizet har inga rundor ännu. Börja med att lägga till en runda – eller gå tillbaka till biblioteket och tryck <b>✨ Skapa med AI</b>.</div>`;
   Q.rounds.forEach((r, ri) => wireRound(ri));
   renderStatus();
 }
+const BULK = {
+  video: { accept: "video/*,audio/*,image/*,.m4a,.mp3,.wav,.mov", text: "Dra in alla låtar på en gång", hint: "Döp gärna filerna till <b>Artist - Låttitel</b>, så fylls svaret i automatiskt. Bilder med samma namn blir facitbild." },
+  image: { accept: "image/*", text: "Dra in alla omslag på en gång", hint: "Döp gärna filerna till <b>Artist - Album</b>, så fylls svaret i automatiskt." },
+};
 function roundHtml(r, ri) {
   const qs = r.questions || [];
   const t = r.type || "trivia";
   const col = collapsed.has(ri);
+  const bulk = BULK[t];
   return `<div class="round card" id="round-${ri}">
     <div class="rhead">
       <span class="num">${ri + 1}</span>
       <input class="t grow" style="max-width:420px" data-path="rounds.${ri}.title" value="${esc(r.title)}" placeholder="Rundans namn, t.ex. 80-talet" maxlength="80">
       <span class="muted" style="font-size:14px">${qs.length} ${qs.length === 1 ? "fråga" : "frågor"}</span>
       <span class="grow"></span>
-      <button class="btn ghost xs" data-ract="toggle">${col ? "Visa frågor ▾" : "Dölj frågor ▴"}</button>
+      <button class="btn ghost xs" data-ract="toggle">${col ? "Visa rundan ▾" : "Fäll ihop ▴"}</button>
       <button class="iconbtn" data-ract="up" title="Flytta upp" ${ri === 0 ? "disabled" : ""}>↑</button>
       <button class="iconbtn" data-ract="down" title="Flytta ner" ${ri === Q.rounds.length - 1 ? "disabled" : ""}>↓</button>
       <button class="iconbtn" data-ract="del" title="Ta bort rundan">✕</button>
@@ -315,15 +343,50 @@ function roundHtml(r, ri) {
       <div class="types">${Object.entries(TYPES).map(([k, v]) => `<button type="button" class="type ${k === t ? "on" : ""}" data-type="${k}"><b>${v.name}</b><span>${v.desc}</span></button>`).join("")}</div>
       <div class="field" style="margin-top:12px"><label class="f">Instruktion till lagen</label>
         <input class="t" data-path="rounds.${ri}.instruction" value="${esc(r.instruction)}" placeholder="${esc(TYPES[t].instr)}" maxlength="120"></div>
-      <div class="qs">${qs.map((q, qi) => `<div class="q" id="q-${ri}-${qi}" data-r="${ri}" data-q="${qi}">${questionInner(r, q, ri, qi)}</div>`).join("")}</div>
+      ${bulk ? `<div class="bulk" data-bulk="${ri}">
+          <div class="grow"><b>${bulk.text}</b><div class="hint" style="margin:2px 0 0">${bulk.hint}</div><div class="prog hidden"><div></div></div><div class="hint bulkmsg"></div></div>
+          <button type="button" class="btn ghost sm" data-ract="bulkpick">Välj filer…</button>
+          <input type="file" class="hidden" multiple accept="${bulk.accept}">
+        </div>` : ""}
+      ${qs.length ? `<div class="rtools">
+          <button type="button" class="btn ghost xs" data-ract="openall">Öppna alla</button>
+          <button type="button" class="btn ghost xs" data-ract="closeall">Stäng alla</button>
+          <span class="grow"></span>
+          <button type="button" class="btn ghost xs" data-ract="fillwrong" title="Använder rätt svar från rundans andra frågor">Fyll i tomma fel alternativ</button>
+          <button type="button" class="btn ghost xs" data-ract="aiwrong">✨ Fel alternativ med AI</button>
+        </div>` : ""}
+      <div class="qs">${qs.map((q, qi) => `<div class="q ${openQs.has(q) ? "open" : ""}" id="q-${ri}-${qi}" data-r="${ri}" data-q="${qi}">${questionInner(r, q, ri, qi)}</div>`).join("")}</div>
       <div class="addq"><button class="btn ghost sm" data-ract="addq">+ Lägg till ${TYPES[t].label.toLowerCase()}</button></div>
     </div>
   </div>`;
 }
-function questionInner(r, q, ri, qi) {
-  const p = `rounds.${ri}.questions.${qi}`;
+function qProblems(ri, qi) {
+  const tag = `Runda ${ri + 1}, fråga ${qi + 1}:`;
+  return PROBLEMS.filter((p) => p.startsWith(tag)).map((p) => p.slice(tag.length).trim());
+}
+function summaryHtml(r, q, ri, qi) {
   const t = r.type || "trivia";
+  const right = (q.options || [])[0] || "";
+  let pic = `<span class="sic">${t === "video" ? "♪" : t === "image" ? "🖼" : "?"}</span>`;
+  const img = t === "image" ? (q.questionImage || q.image) : t === "video" ? q.answerImage : (q.images || [])[0];
+  if (img && MEDIA.has(img)) pic = `<img class="sic" src="${MURL(img)}" alt="" loading="lazy">`;
+  let text;
+  if (t === "trivia") text = q.q ? esc(q.q) : `<span class="muted">Ingen fråga ännu</span>`;
+  else if (t === "video") text = right ? `<b>${esc(right)}</b>${q.song ? ` – ${esc(q.song)}` : ""}` : `<span class="muted">Inget svar ännu</span>`;
+  else text = right ? `<b>${esc(right)}</b>${q.a && q.a !== right ? ` <span class="muted">· ${esc(q.a)}</span>` : ""}` : `<span class="muted">Inget svar ännu</span>`;
+  const probs = qProblems(ri, qi);
+  const st = probs.length ? `<span class="qst warn" title="${esc(probs.join("\n"))}">⚠ ${esc(probs[0].replace(/\.$/, ""))}${probs.length > 1 ? ` +${probs.length - 1}` : ""}</span>` : `<span class="qst ok">✓</span>`;
+  return `<span class="qn">${qi + 1}</span>${pic}<span class="qtxt">${text}</span>${q.ai ? `<span class="badge-ai" title="Skapad av AI – kontrollera">AI</span>` : ""}${st}`;
+}
+function questionInner(r, q, ri, qi) {
   const n = r.questions.length;
+  const t = r.type || "trivia";
+  const moveBtns = `<button class="iconbtn" data-qact="up" title="Flytta upp" ${qi === 0 ? "disabled" : ""}>↑</button>
+      <button class="iconbtn" data-qact="down" title="Flytta ner" ${qi === n - 1 ? "disabled" : ""}>↓</button>`;
+  if (!openQs.has(q)) {
+    return `<div class="qsum" data-qact="open" title="Klicka för att redigera">${summaryHtml(r, q, ri, qi)}<span class="qbtns">${moveBtns}<button class="iconbtn" data-qact="del" title="Ta bort">✕</button></span></div>`;
+  }
+  const p = `rounds.${ri}.questions.${qi}`;
   const opts = [0, 1, 2, 3].map((i) => (q.options || [])[i] || "");
   let body = "";
   if (t === "trivia") {
@@ -351,20 +414,22 @@ function questionInner(r, q, ri, qi) {
       <div class="field"><label class="f">Facittext <span class="muted" style="font-weight:400">(valfri)</span></label>
         <input class="t" data-path="${p}.a" value="${esc(q.a)}" maxlength="200" placeholder="${esc(opts[0] || "Samma som rätt svar")}">
         <p class="hint">Visas stort i facit. Lämna tom för att visa rätt svar.</p></div>
-      ${t === "trivia" ? `<div class="field"><label class="f">Fakta i facit <span class="muted" style="font-weight:400">(valfri)</span></label><textarea class="t" rows="2" data-path="${p}.fact" maxlength="1200">${esc(q.fact)}</textarea></div>` : "<div></div>"}
+      <div class="field"><label class="f">Fakta i facit <span class="muted" style="font-weight:400">(valfri)</span></label><textarea class="t" rows="2" data-path="${p}.fact" maxlength="1200">${esc(q.fact)}</textarea>${t === "video" ? `<p class="hint">Visas bara för text- och bildfrågor.</p>` : ""}</div>
     </div>
     ${t === "trivia" ? imagesField(`${p}.images`) : ""}`;
-  return `<div class="qh"><span class="n">${TYPES[t].label} ${qi + 1}</span>
-      <button class="iconbtn" data-qact="up" title="Flytta upp" ${qi === 0 ? "disabled" : ""}>↑</button>
-      <button class="iconbtn" data-qact="down" title="Flytta ner" ${qi === n - 1 ? "disabled" : ""}>↓</button>
+  return `<div class="qh"><span class="n" data-qact="close" title="Stäng">${TYPES[t].label} ${qi + 1} ▴</span>
+      ${moveBtns}
       <button class="iconbtn" data-qact="dup" title="Duplicera">⧉</button>
       <button class="iconbtn" data-qact="del" title="Ta bort">✕</button></div>
+    ${q.ai ? `<div class="aibar"><span class="badge-ai">AI</span><span class="grow">Skapad av AI – kontrollera att frågan, svaret och fakta stämmer.</span><button type="button" class="btn ghost xs" data-qact="aiok">Ser bra ut ✓</button></div>` : ""}
     ${body}
     <div class="sub">Svarsalternativ</div>
     <div class="opts">${opts.map((o, i) => `<div class="o"><span class="L">${i === 0 ? "✓ Rätt svar" : "Fel " + i}</span>
       <input class="t ${i === 0 ? "right" : ""}" data-path="${p}.options.${i}" value="${esc(o)}" maxlength="120" placeholder="${i === 0 ? "Rätt svar" : i === 3 ? "Fel alternativ (valfritt)" : "Fel alternativ"}"></div>`).join("")}</div>
-    <p class="hint">Alternativen blandas automatiskt – lagen ser dem som A–D. Minst ett fel alternativ behövs.</p>
-    ${facit}`;
+    <div class="row" style="margin-top:6px"><p class="hint grow" style="margin:0">Alternativen blandas automatiskt – lagen ser dem som A–D. Minst ett fel alternativ behövs.</p>
+      <button type="button" class="btn ghost xs" data-qact="fillwrong" title="Hämtar rätt svar från rundans andra frågor">Fyll i fel alternativ</button></div>
+    ${facit}
+    <div class="row" style="justify-content:flex-end;margin-top:4px"><button type="button" class="btn ghost xs" data-qact="close">Klar ▴</button></div>`;
 }
 function imagesField(path) {
   const imgs = getPath(path) || [];
@@ -378,16 +443,116 @@ function imagesField(path) {
 function renderQuestion(ri, qi) {
   const el = document.getElementById(`q-${ri}-${qi}`);
   if (!el) return renderRounds();
-  el.innerHTML = questionInner(Q.rounds[ri], Q.rounds[ri].questions[qi], ri, qi);
+  const q = Q.rounds[ri].questions[qi];
+  el.classList.toggle("open", openQs.has(q));
+  el.innerHTML = questionInner(Q.rounds[ri], q, ri, qi);
   wireQuestion(el);
   renderStatus();
 }
+// Sammanfattningsraderna visar problem, så de ritas om när kontrollen från servern kommer tillbaka.
+function refreshSummaries() {
+  document.querySelectorAll(".q:not(.open)").forEach((el) => {
+    const ri = +el.dataset.r, qi = +el.dataset.q;
+    const r = Q.rounds[ri], q = r && r.questions[qi];
+    const sum = q && el.querySelector(".qsum");
+    if (sum) { const btns = sum.querySelector(".qbtns"); sum.innerHTML = summaryHtml(r, q, ri, qi); sum.appendChild(btns); }
+  });
+}
+
+// --- Fel alternativ från rundans andra svar ----------------------------------------------
+const normTxt = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+function fillWrong(round, q) {
+  const right = (q.options || [])[0];
+  if (!right) return 0;
+  q.options = [0, 1, 2, 3].map((i) => (q.options || [])[i] || "");
+  const used = new Set(q.options.filter(Boolean).map(normTxt));
+  const pool = (round.questions || []).map((x) => (x.options || [])[0]).filter((o) => o && !used.has(normTxt(o)));
+  const uniq = [...new Map(pool.map((o) => [normTxt(o), o])).values()].sort(() => Math.random() - 0.5);
+  let n = 0;
+  for (let i = 1; i < 4 && uniq.length; i++) if (!q.options[i]) { q.options[i] = uniq.shift(); n++; }
+  return n;
+}
+
+// --- Massuppladdning ------------------------------------------------------------------------
+const TAGS = /\b(official|video|audio|lyrics?|hd|hq|4k|remaster(ed)?|music|clip|visualizer|mv)\b/i;
+function parseName(fname) {
+  let s = fname.replace(/\.[^.]+$/, "").replace(/_/g, " ");
+  s = s.replace(/[\(\[][^\)\]]*[\)\]]/g, (m) => (TAGS.test(m) ? "" : m));
+  s = s.replace(/^\s*\d{1,3}\s*[.\-)]\s*|^\s*\d{1,3}\s+(?=\D)/, "").replace(/\s+/g, " ").trim();
+  const m = s.split(/\s+[-–—]\s+/);
+  return m.length > 1 ? { artist: m[0].trim(), title: m.slice(1).join(" - ").trim() } : { artist: "", title: s };
+}
+function matchScore(round, q, info) {
+  const t = round.type;
+  const right = normTxt((q.options || [])[0]);
+  const title = normTxt(t === "video" ? q.song : (q.a || "").replace(/^.*?[–-]\s*/, ""));
+  const fa = normTxt(info.artist), ft = normTxt(info.title), whole = normTxt(info.artist + " " + info.title);
+  let s = 0;
+  if (title && (ft === title || whole.includes(title))) s += 2;
+  if (right && (fa === right || whole.includes(right))) s += 1;
+  return s;
+}
+async function bulkUpload(ri, files, box) {
+  const r = Q.rounds[ri];
+  r.questions = r.questions || [];
+  const t = r.type;
+  const isMain = (f) => (t === "video" ? !isImg(f.name) : isImg(f.name));
+  const main = files.filter(isMain), extra = files.filter((f) => !isMain(f));
+  const bar = $(".prog", box), fill = $(".prog > div", box), msg = $(".bulkmsg", box);
+  bar.classList.remove("hidden");
+  let made = 0, matched = 0, failed = 0, done = 0;
+  const total = files.length;
+  const step = () => { done++; fill.style.width = (done / total * 100) + "%"; msg.textContent = `Laddar upp ${done} av ${total}…`; };
+  const send = (file) => new Promise((res) => upload(file, box, (name) => res(name), () => res(null)));
+  for (const file of main) {
+    const info = parseName(file.name);
+    const name = await send(file); step();
+    if (!name) { failed++; continue; }
+    const key = t === "video" ? "video" : "image";
+    // Para ihop med en befintlig fråga som saknar fil (t.ex. från AI), annars skapa en ny.
+    let best = null, bestScore = 0;
+    r.questions.forEach((q) => { if (!q[key]) { const s = matchScore(r, q, info); if (s > bestScore) { best = q; bestScore = s; } } });
+    if (best) { best[key] = name; matched++; }
+    else {
+      const q = { options: [info.artist || info.title, "", "", ""] };
+      q[key] = name;
+      if (t === "video" && info.artist) q.song = info.title;
+      if (t === "image" && info.artist) q.a = `${info.artist} – ${info.title}`;
+      r.questions.push(q); made++;
+    }
+  }
+  for (const file of extra) {   // bilder i en låtrunda → facitbild till låten med samma namn
+    const info = parseName(file.name);
+    const name = await send(file); step();
+    if (!name) { failed++; continue; }
+    let best = null, bestScore = 0;
+    r.questions.forEach((q) => { const s = matchScore(r, q, info); if (s > bestScore && !q.answerImage) { best = q; bestScore = s; } });
+    if (best) { best.answerImage = name; matched++; }
+  }
+  bar.classList.add("hidden");
+  changed(); renderRounds();
+  const parts = [];
+  if (made) parts.push(made === 1 ? "1 ny fråga" : `${made} nya frågor`);
+  if (matched) parts.push(`${matched} ${matched === 1 ? "fil kopplad" : "filer kopplade"} till befintliga frågor`);
+  if (failed) parts.push(`${failed} misslyckades`);
+  toast(parts.join(", ") || "Inga filer lades till.", !!failed && !made && !matched);
+}
+
 function wireRound(ri) {
   const el = document.getElementById(`round-${ri}`);
   const r = Q.rounds[ri];
   el.querySelectorAll("[data-ract]").forEach((b) => b.onclick = () => {
     const a = b.dataset.ract;
     if (a === "toggle") { collapsed.has(ri) ? collapsed.delete(ri) : collapsed.add(ri); return renderRounds(); }
+    if (a === "openall" || a === "closeall") { (r.questions || []).forEach((q) => (a === "openall" ? openQs.add(q) : openQs.delete(q))); return renderRounds(); }
+    if (a === "bulkpick") return el.querySelector(".bulk input[type=file]").click();
+    if (a === "fillwrong") {
+      const n = (r.questions || []).reduce((s, q) => s + fillWrong(r, q), 0);
+      toast(n ? `${n} fel alternativ ifyllda.` : (r.questions.length < 2 ? "Lägg till fler frågor i rundan först." : "Inga tomma fel alternativ att fylla i."), !n);
+      if (n) { changed(); renderRounds(); }
+      return;
+    }
+    if (a === "aiwrong") return aiWrong(ri);
     if (a === "up" || a === "down") {
       const j = a === "up" ? ri - 1 : ri + 1;
       [Q.rounds[ri], Q.rounds[j]] = [Q.rounds[j], Q.rounds[ri]];
@@ -400,7 +565,8 @@ function wireRound(ri) {
     }
     if (a === "addq") {
       r.questions = r.questions || [];
-      r.questions.push({ options: ["", "", "", ""] });
+      const q = { options: ["", "", "", ""] };
+      r.questions.push(q); openQs.add(q);
       collapsed.delete(ri);
       changed(); renderRounds();
       const card = document.getElementById(`q-${ri}-${r.questions.length - 1}`);
@@ -409,6 +575,12 @@ function wireRound(ri) {
     }
     changed(); renderRounds();
   });
+  const bulk = el.querySelector(".bulk");
+  if (bulk) {
+    const input = bulk.querySelector("input[type=file]");
+    input.onchange = () => { const fs = [...input.files]; input.value = ""; if (fs.length) bulkUpload(ri, fs, bulk); };
+    dropTarget(bulk, (f, all) => bulkUpload(ri, all, bulk));
+  }
   el.querySelectorAll("[data-type]").forEach((b) => b.onclick = () => {
     const old = r.type || "trivia", nt = b.dataset.type;
     if (old === nt) return;
@@ -421,9 +593,20 @@ function wireRound(ri) {
 }
 function wireQuestion(card) {
   const ri = +card.dataset.r, qi = +card.dataset.q;
-  const qs = Q.rounds[ri].questions;
-  card.querySelectorAll("[data-qact]").forEach((b) => b.onclick = () => {
+  const r = Q.rounds[ri], qs = r.questions;
+  card.querySelectorAll("[data-qact]").forEach((b) => b.onclick = (e) => {
     const a = b.dataset.qact;
+    if (a === "open" && e.target.closest(".qbtns")) return;
+    e.stopPropagation();
+    const q = qs[qi];
+    if (a === "open") { openQs.add(q); return renderQuestion(ri, qi); }
+    if (a === "close") { openQs.delete(q); renderQuestion(ri, qi); return card.scrollIntoView({ block: "nearest" }); }
+    if (a === "aiok") { delete q.ai; changed(); return renderQuestion(ri, qi); }
+    if (a === "fillwrong") {
+      const n = fillWrong(r, q);
+      if (!n) return toast(qs.length < 2 ? "Lägg till fler frågor i rundan först – fel alternativ hämtas från de andra frågornas rätta svar." : "Inga tomma fel alternativ att fylla i.", true);
+      changed(); return renderQuestion(ri, qi);
+    }
     if (a === "setstart" || a === "setend") {
       const pl = card.querySelector(".player video, .player audio");
       if (!pl) return;
@@ -434,9 +617,8 @@ function wireQuestion(card) {
       return;
     }
     if (a === "up" || a === "down") { const j = a === "up" ? qi - 1 : qi + 1; [qs[qi], qs[j]] = [qs[j], qs[qi]]; }
-    if (a === "dup") qs.splice(qi + 1, 0, JSON.parse(JSON.stringify(qs[qi])));
+    if (a === "dup") { const c = JSON.parse(JSON.stringify(q)); qs.splice(qi + 1, 0, c); openQs.add(c); openQs.delete(q); }
     if (a === "del") {
-      const q = qs[qi];
       const empty = !(q.q || q.video || q.image || (q.options || []).some(Boolean));
       if (!empty && !confirm(`Ta bort fråga ${qi + 1}?`)) return;
       qs.splice(qi, 1);
@@ -446,6 +628,35 @@ function wireQuestion(card) {
   wireMedia(card);
 }
 function swapSet(set, a, b) { const ha = set.has(a), hb = set.has(b); set.delete(a); set.delete(b); if (ha) set.add(b); if (hb) set.add(a); }
+
+// --- AI: fel alternativ för en runda ----------------------------------------------------
+function aiWrong(ri) {
+  const r = Q.rounds[ri];
+  if (!(r.questions || []).some((q) => (q.options || [])[0])) return toast("Skriv rätt svar på frågorna först.", true);
+  AI.open({
+    title: `Fel alternativ med AI – runda ${ri + 1}`,
+    intro: "AI:n föreslår tre trovärdiga fel alternativ till varje fråga i rundan.",
+    formHtml: `<label class="chk"><input type="checkbox" name="replace"> Ersätt fel alternativ som redan är ifyllda</label>`,
+    getPrompt: () => AI.wrongPrompt(r),
+    applyLabel: "Fyll i alternativen",
+    apply: async (json, form) => {
+      const replace = form.querySelector('[name="replace"]').checked;
+      const list = Array.isArray(json.questions) ? json.questions : [];
+      if (!list.length) throw new Error("Svaret innehåller inga frågor.");
+      let n = 0;
+      list.forEach((item, idx) => {
+        const q = r.questions[(+item.n || idx + 1) - 1];
+        if (!q || !(q.options || [])[0]) return;
+        const right = normTxt(q.options[0]);
+        const w = (item.wrong || []).map((x) => String(x || "").trim()).filter((x) => x && normTxt(x) !== right);
+        q.options = [0, 1, 2, 3].map((i) => (q.options || [])[i] || "");
+        for (let i = 1; i < 4 && w.length; i++) if (replace || !q.options[i]) { q.options[i] = w.shift(); n++; }
+      });
+      changed(); renderRounds();
+      return `${n} fel alternativ ifyllda.`;
+    },
+  });
+}
 
 $("#addRound").onclick = () => {
   const prev = Q.rounds.at(-1);

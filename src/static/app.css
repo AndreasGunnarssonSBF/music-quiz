@@ -48,6 +48,25 @@ dialog h3 { margin: 0 0 10px; font-size: 22px; }
 dialog p { line-height: 1.5; }
 dialog .row { justify-content: flex-end; margin-top: 18px; }
 
+.err { color: var(--bad); font-size: 14px; min-height: 1.2em; margin: 6px 0 0; }
+dialog.ai-dlg { max-width: min(680px, 94vw); width: 680px; position: relative; }
+.ai-x { position: absolute; top: 14px; right: 14px; }
+.ai-steps { padding-left: 22px; margin: 14px 0 0; }
+.ai-steps li { margin: 0 0 14px; line-height: 1.5; }
+.ai-steps textarea { margin-top: 6px; }
+.ai-steps .row { justify-content: flex-start; margin-top: 6px; }
+.ai-form span.f { display: block; }
+.iconbtn { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 15px; line-height: 1; color: var(--text); }
+.iconbtn:hover { border-color: var(--cyan); }
+.iconbtn:disabled { opacity: .35; cursor: default; }
+.ai-form .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.ai-form .field { margin-bottom: 10px; }
+.chk { display: inline-flex; gap: 6px; align-items: center; margin-right: 14px; font-size: 14px; cursor: pointer; }
+.chk input { accent-color: var(--pink); width: 16px; height: 16px; }
+.badge-ai { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px;
+            background: rgba(139,92,255,.25); border: 1px solid rgba(139,92,255,.6); color: #e3d9ff; }
+@media (max-width: 640px) { .ai-form .grid2 { grid-template-columns: 1fr; } }
+
 .problems { margin: 0; padding: 12px 14px 12px 32px; border-radius: 12px; background: rgba(255,201,77,.08); border: 1px solid rgba(255,201,77,.4); font-size: 14px; line-height: 1.5; }
 .problems li { margin: 2px 0; }
 .ok-box { padding: 12px 14px; border-radius: 12px; background: rgba(51,227,154,.08); border: 1px solid rgba(51,227,154,.4); font-size: 14px; }

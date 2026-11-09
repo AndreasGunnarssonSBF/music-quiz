@@ -26,7 +26,7 @@ import library
 from library import Library, check, prepare
 from tunnel import Tunnel, resource_dir
 
-APP_VERSION = "2.0"
+APP_VERSION = "2.1"
 STATIC_DIR = os.path.join(resource_dir(), "static")
 MAX_TEAMS = 80
 POLL_TIMEOUT = 25
@@ -799,7 +799,8 @@ class AdminHandler(BaseHandler):
             if p == "/api/admin/ping":
                 return self.send(200, b'{"ok":true}')
             if p == "/api/admin/quiz/new":
-                qid = lib.create(str(d.get("title") or "Nytt quiz"))
+                quiz = d.get("quiz") if isinstance(d.get("quiz"), dict) else None
+                qid = lib.create(str(d.get("title") or (quiz or {}).get("title") or "Nytt quiz"), quiz=quiz)
                 return self.send(200, _json({"id": qid}))
             if p == "/api/admin/quiz/save":
                 qid = str(d.get("id"))

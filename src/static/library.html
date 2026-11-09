@@ -53,6 +53,7 @@
   <div class="row" style="margin-top:26px">
     <h2 class="sec grow" style="margin:0">Dina quiz</h2>
     <button class="btn sm" id="new">+ Nytt quiz</button>
+    <button class="btn ghost sm" id="aiNew">✨ Skapa med AI</button>
     <button class="btn ghost sm" id="import">Importera quizfil…</button>
     <input type="file" id="importFile" accept=".zip,application/zip" class="hidden">
   </div>
@@ -69,6 +70,7 @@
 <dialog id="dlg"><h3 id="dlgTitle"></h3><div id="dlgBody"></div><div class="row" id="dlgBtns"></div></dialog>
 <div class="toast hidden" id="toast"></div>
 
+<script src="/static/ai.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -153,6 +155,7 @@ function render() {
       <h3>${esc(q.title)}</h3>
       <div class="meta">${q.rounds} ${q.rounds === 1 ? "runda" : "rundor"} · ${q.questions} frågor · ${mb(q.bytes)}</div>
       ${q.problems.length ? `<div class="warn">⚠ ${q.problems.length} ${q.problems.length === 1 ? "sak" : "saker"} att fixa innan start</div>` : ""}
+      ${q.aiUnchecked ? `<div class="meta"><span class="badge-ai">AI</span> ${q.aiUnchecked} ${q.aiUnchecked === 1 ? "fråga" : "frågor"} att kontrollera</div>` : ""}
       <div class="acts">
         <button class="btn sm" data-a="start">${q.id === INFO.active ? "Öppna" : "Starta"}</button>
         <a class="btn ghost sm" href="/edit?id=${encodeURIComponent(q.id)}">Redigera</a>
@@ -209,6 +212,36 @@ $("#new").onclick = async () => {
   try { const d = await api("/api/admin/quiz/new", { title }); location.href = "/edit?id=" + encodeURIComponent(d.id); }
   catch (e) { toast(e.message, true); }
 };
+$("#aiNew").onclick = () => AI.open({
+  title: "Skapa quiz med AI",
+  intro: "Du behöver inget konto i appen. Instruktionen kopieras till Claude eller ChatGPT, och svaret klistras tillbaka här. AI:n skriver frågor, svarsalternativ och fakta. Musik och bilder lägger du in själv efteråt – dra in alla filer på en gång i redigeraren.",
+  formHtml: `
+    <div class="field"><label class="f" for="aiTheme">Tema</label><input class="t" id="aiTheme" name="theme" required maxlength="200" placeholder="T.ex. 80-talets svenska pop, Eurovision, filmmusik"></div>
+    <div class="grid2">
+      <div class="field"><label class="f" for="aiRounds">Antal rundor</label><select class="t" id="aiRounds" name="rounds">${[1,2,3,4,5,6].map((n) => `<option ${n === 3 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+      <div class="field"><label class="f" for="aiPer">Frågor per runda</label><select class="t" id="aiPer" name="perRound">${[5,6,8,10,12,15].map((n) => `<option ${n === 8 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+    </div>
+    <div class="field"><span class="f">Rundtyper (växlar mellan de valda)</span>
+      <label class="chk"><input type="checkbox" name="types" value="trivia" checked> Textfrågor</label>
+      <label class="chk"><input type="checkbox" name="types" value="video" checked> Låtar – gissa artisten</label>
+      <label class="chk"><input type="checkbox" name="types" value="image"> Skivomslag</label></div>
+    <div class="grid2">
+      <div class="field"><label class="f" for="aiLevel">Svårighetsgrad</label><select class="t" id="aiLevel" name="level"><option>lätt</option><option selected>medel</option><option>svår</option><option>blandat, från lätt till svårt</option></select></div>
+      <div class="field"><label class="f" for="aiAud">Publik <span class="muted" style="font-weight:400">(valfri)</span></label><input class="t" id="aiAud" name="audience" placeholder="T.ex. kollegor 25–65 år"></div>
+    </div>
+    <div class="field"><label class="f" for="aiExtra">Övriga önskemål <span class="muted" style="font-weight:400">(valfritt)</span></label><textarea class="t" id="aiExtra" name="extra" rows="2" placeholder="T.ex. bara svenska artister, inga låtar efter 1995"></textarea></div>`,
+  getPrompt: (f) => {
+    const fd = new FormData(f);
+    return AI.quizPrompt({ theme: fd.get("theme") || "(skriv ett tema)", rounds: +fd.get("rounds"), perRound: +fd.get("perRound"),
+      types: fd.getAll("types"), level: fd.get("level"), audience: fd.get("audience"), extra: fd.get("extra") });
+  },
+  applyLabel: "Skapa quizet",
+  apply: async (json) => {
+    const quiz = AI.toQuiz(json);
+    const d = await api("/api/admin/quiz/new", { title: quiz.title, quiz });
+    location.href = "/edit?id=" + encodeURIComponent(d.id);
+  },
+});
 $("#import").onclick = () => $("#importFile").click();
 $("#importFile").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) importFile(f); };
 async function importFile(f) {

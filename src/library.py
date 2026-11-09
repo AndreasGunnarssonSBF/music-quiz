@@ -92,6 +92,7 @@ class Library:
             "problems": check(quiz, d),
             "modified": os.path.getmtime(os.path.join(self.path(qid), "quiz.json")),
             "hasSaved": self.has_saved_game(qid),
+            "aiUnchecked": sum(1 for r in rounds for q in (r.get("questions") or []) if q.get("ai")),
         }
 
     def summaries(self):
@@ -121,6 +122,8 @@ class Library:
         os.makedirs(os.path.join(p, "media"))
         quiz = quiz or new_quiz(title)
         quiz["title"] = title
+        if "rules" not in quiz:   # t.ex. quiz från AI: använd standardreglerna
+            quiz["rules"] = new_quiz(title)["rules"]
         write_json(os.path.join(p, "quiz.json"), clean_quiz(quiz))
         return qid
 
@@ -342,6 +345,8 @@ def clean_quiz(quiz):
             for key in ("image", "questionImage", "video", "answerImage"):
                 if q.get(key):
                     qq[key] = f(q[key])
+            if q.get("ai"):
+                qq["ai"] = True   # skapad av AI, inte kontrollerad ännu
             imgs = [f(x) for x in (q.get("images") or []) if x]
             if imgs:
                 qq["images"] = imgs
