@@ -1,0 +1,58 @@
+/* Gemensamt för biblioteket, redigeraren och hjälpsidan (bygger på style.css). */
+body { min-height: 100%; background-attachment: fixed; }
+textarea { font: inherit; color: inherit; }
+a { color: var(--cyan); }
+a.btn { text-decoration: none; display: inline-block; }
+a.btn.ghost { color: var(--text); }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 20px 20px 80px; }
+.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+.topbar .logo { font-size: 40px; text-decoration: none; }
+.topbar .spacer { flex: 1; }
+h1.page { font-size: 52px; margin: 6px 0 4px; }
+h2.sec { font-size: 30px; margin: 30px 0 12px; }
+.lead { color: var(--muted); margin: 0 0 18px; line-height: 1.5; }
+
+.btn.sm { padding: .5em 1.05em; font-size: 14px; }
+.btn.xs { padding: .35em .8em; font-size: 13px; }
+.btn.danger { background: rgba(255,93,108,.14); border: 1px solid rgba(255,93,108,.5); box-shadow: none; color: #ffd1d6; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 600;
+        background: var(--panel); border: 1px solid var(--panel-line); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.ok { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+.dot.warn { background: #ffc94d; }
+.dot.bad { background: var(--bad); }
+.dot.pulse { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3 } }
+
+label.f { display: block; font-weight: 600; font-size: 14px; margin: 0 0 6px; }
+.hint { font-size: 13px; color: var(--muted); margin: 4px 0 0; line-height: 1.45; }
+input.t, textarea.t, select.t {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--panel-line);
+  background: rgba(0,0,0,.35); font-size: 15px; line-height: 1.4;
+}
+textarea.t { resize: vertical; min-height: 64px; }
+input.t:focus, textarea.t:focus, select.t:focus { outline: 2px solid rgba(47,214,255,.6); outline-offset: 1px; border-color: transparent; }
+input.t.right { border-color: rgba(51,227,154,.7); background: rgba(51,227,154,.08); }
+.field { margin-bottom: 14px; }
+
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 50; padding: 10px 18px; border-radius: 999px;
+         background: #1c1236; border: 1px solid var(--panel-line); box-shadow: 0 10px 30px rgba(0,0,0,.5); font-weight: 600; max-width: 90vw; }
+.toast.bad { background: #3a1630; border-color: var(--bad); }
+
+dialog { background: var(--bg2); color: var(--text); border: 1px solid var(--panel-line); border-radius: 18px; padding: 22px; max-width: min(560px, 92vw); }
+dialog::backdrop { background: rgba(5,3,12,.7); backdrop-filter: blur(3px); }
+dialog h3 { margin: 0 0 10px; font-size: 22px; }
+dialog p { line-height: 1.5; }
+dialog .row { justify-content: flex-end; margin-top: 18px; }
+
+.problems { margin: 0; padding: 12px 14px 12px 32px; border-radius: 12px; background: rgba(255,201,77,.08); border: 1px solid rgba(255,201,77,.4); font-size: 14px; line-height: 1.5; }
+.problems li { margin: 2px 0; }
+.ok-box { padding: 12px 14px; border-radius: 12px; background: rgba(51,227,154,.08); border: 1px solid rgba(51,227,154,.4); font-size: 14px; }
+
+@media (max-width: 640px) {
+  .wrap { padding: 16px 16px 80px; }
+  h1.page { font-size: 40px; }
+}

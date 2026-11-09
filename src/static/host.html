@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Musikquiz – Quizmaster</title>
+<link rel="stylesheet" href="/static/fonts/fonts.css">
+<link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/qrcode.js"></script>
+<style>
+  html, body { overflow: hidden; }
+  #stage { position: fixed; inset: 0 0 64px 0; display: flex; align-items: center; justify-content: center; padding: 3vh 4vw; }
+  .slide { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2.2vh; animation: in .45s ease-out; }
+  @keyframes in { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+  @media (prefers-reduced-motion: reduce) { .slide { animation: none } }
+  .hero { font-size: clamp(48px, 11vh, 150px); margin: 0; }
+  .sub { font-size: clamp(22px, 4.2vh, 52px); margin: 0; }
+  .kicker { font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--cyan); font-size: clamp(14px, 2.2vh, 26px); }
+  .plate { padding: 3vh 5vw; }
+  .notes-bg { position: absolute; inset: 0; background-position: center; background-size: cover; opacity: .55; pointer-events: none; z-index: -1; }
+  .conn-wait { font-size: clamp(16px, 2.6vh, 28px); color: var(--muted); }
+  .lanurl { font-size: clamp(13px, 1.8vh, 20px); color: var(--muted); margin-top: 1vh; }
+  .vanswer .audiocover { width: 100%; max-height: 60vh; object-fit: contain; border-radius: 12px; }
+
+  /* Lobby */
+  .lobby { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4vw; align-items: center; width: 100%; height: 100%; text-align: left; }
+  .qr { background: #fff; padding: 2vh; border-radius: 18px; width: min(40vh, 34vw); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
+  .qr img, .qr svg { width: 100%; height: 100%; image-rendering: pixelated; }
+  .url { font-size: clamp(20px, 3.6vh, 44px); font-weight: 700; margin-top: 1.6vh; word-break: break-all; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 2vh; max-height: 30vh; overflow: hidden; }
+  .chip { padding: 8px 16px; border-radius: 999px; background: var(--panel); border: 1px solid var(--panel-line); font-weight: 600; font-size: clamp(14px, 2vh, 22px); animation: pop .35s ease-out; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0 } }
+
+  /* Listor */
+  ol.big { text-align: left; font-size: clamp(20px, 3.8vh, 44px); line-height: 1.35; margin: 0; padding: 3vh 4vw 3vh 7vw; }
+  ol.big li { margin: 1vh 0; }
+  ol.big li::marker { color: var(--pink); font-family: var(--display); }
+
+  /* Frågor */
+  .qnum { font-size: clamp(60px, 16vh, 210px); margin: 0; }
+  .qtext { font-size: clamp(26px, 5.4vh, 66px); line-height: 1.2; max-width: 1500px; margin: 0; font-weight: 600; }
+  .cover { max-height: 58vh; max-width: 70vw; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .answered { position: fixed; top: 18px; right: 22px; padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 18px; }
+  .player { width: min(70vw, 1100px); }
+  .bar { height: 8px; border-radius: 4px; background: var(--panel); overflow: hidden; margin-top: 2vh; }
+  .bar > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--pink), var(--cyan)); }
+  .eq { display: flex; gap: 1vh; justify-content: center; height: 12vh; align-items: flex-end; }
+  .eq span { width: 1.6vh; border-radius: 1vh; background: linear-gradient(var(--pink), var(--cyan)); animation: eq 1s ease-in-out infinite; }
+  .eq.paused span { animation-play-state: paused; }
+  .eq span:nth-child(2n) { animation-delay: -.3s } .eq span:nth-child(3n) { animation-delay: -.6s } .eq span:nth-child(5n) { animation-delay: -.8s }
+  @keyframes eq { 0%,100% { height: 15% } 50% { height: 100% } }
+
+  /* Svar */
+  .answer-layout { display: grid; grid-template-columns: auto 1fr; gap: 3vw; align-items: center; width: 100%; max-width: 1600px; text-align: left; }
+  .answer-layout.noimg { grid-template-columns: 1fr; text-align: center; }
+  .answer-media { display: flex; gap: 1vw; align-items: center; justify-content: center; }
+  .answer-media img { max-height: 44vh; max-width: 28vw; border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,.55); }
+  .answer-media video { max-height: 50vh; max-width: 48vw; border-radius: 10px; background: #000; }
+  .ans { font-size: clamp(44px, 9vh, 120px); margin: 0; }
+  .song { font-size: clamp(20px, 3.6vh, 40px); margin: .6vh 0 0; }
+  .qsmall { font-size: clamp(16px, 2.6vh, 28px); color: var(--muted); margin: 0 0 1.4vh; }
+  .fact { font-size: clamp(15px, 2.3vh, 24px); line-height: 1.45; color: var(--muted); margin: 1.6vh 0 0; max-width: 60ch; }
+  .tanswers { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 96vw; margin-top: 1vh; max-height: 24vh; overflow: auto; }
+  .ta { border: 1px solid var(--panel-line); background: var(--panel); border-radius: 12px; padding: 8px 12px; cursor: pointer; text-align: left; min-width: 140px; max-width: 260px; }
+  .ta .tn { font-size: 13px; color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ta .tv { font-weight: 700; font-size: clamp(14px, 2vh, 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ta.ok { border-color: var(--ok); background: rgba(51,227,154,.12); }
+  .ta.bad { border-color: rgba(255,93,108,.6); background: rgba(255,93,108,.08); }
+  .hopts { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4vh 1.4vw; width: min(1400px, 92vw); }
+  .hopts.row { grid-template-columns: repeat(4, minmax(0, 1fr)); width: min(1700px, 94vw); }
+  .hopts.col { grid-template-columns: 1fr; width: 100%; }
+  .hopt { display: flex; align-items: center; gap: 1.2vw; padding: 1.6vh 1.6vw; border-radius: 16px; background: var(--panel);
+          border: 1px solid var(--panel-line); font-size: clamp(18px, 3.4vh, 40px); font-weight: 700; text-align: left; transition: all .5s ease; }
+  .hopts.row .hopt { font-size: clamp(14px, 2.3vh, 28px); padding: 1.1vh 1vw; }
+  .hopt .L { font-family: var(--display); font-size: 1.5em; color: var(--cyan); flex: none; }
+  .hopt .cnt { margin-left: auto; padding-left: .6em; font-size: .75em; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  .hopt.right { border-color: var(--ok); background: rgba(51,227,154,.18); box-shadow: 0 0 24px rgba(51,227,154,.3); }
+  .hopt.right .L { color: var(--ok); }
+  .hopt.dim { opacity: .45; }
+  .imgq { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3vw; align-items: center; width: min(1600px, 94vw); }
+  .imgq .cover { max-height: 62vh; max-width: 46vw; }
+  .qnum.small { font-size: clamp(48px, 11vh, 150px); }
+  .vanswer { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 3vw; align-items: center; width: 100%; max-width: 1750px; }
+  .vanswer video { width: 100%; max-height: 60vh; border-radius: 12px; background: #000; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .vreveal { display: flex; flex-direction: column; align-items: center; gap: 1.2vh; text-align: center; }
+  .vreveal img { max-height: 30vh; max-width: 100%; border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,.55); }
+  .vreveal .ans { font-size: clamp(36px, 7.5vh, 100px); }
+  .vreveal, .slide #tanswers, .slide #hopts { transition: opacity .9s ease, transform .9s ease; }
+  .slide.waiting .vreveal, .slide.waiting #tanswers, .slide.waiting #hopts { opacity: 0; transform: translateY(18px); pointer-events: none; }
+  .revealhint { color: var(--muted); font-size: clamp(14px, 2vh, 20px); }
+  .slide:not(.waiting) .revealhint { display: none; }
+  .ta.manual::after { content: "rättad"; font-size: 10px; color: var(--muted); margin-left: 6px; }
+
+  /* Ställning */
+  .board { width: min(1100px, 90vw); display: flex; flex-direction: column; gap: 1vh; }
+  .brow { display: grid; grid-template-columns: 4vw 1fr auto; gap: 1.5vw; align-items: center; padding: 1vh 1.6vw; font-size: clamp(16px, 2.8vh, 32px); text-align: left; position: relative; overflow: hidden; }
+  .brow .fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, rgba(255,63,180,.25), rgba(47,214,255,.15)); z-index: -1; transition: width .8s ease; }
+  .brow .pl { font-family: var(--display); color: var(--cyan); font-size: 1.4em; }
+  .brow .rs { color: var(--muted); font-size: .7em; margin-right: 1vw; }
+  .podium { display: flex; align-items: flex-end; justify-content: center; gap: 2vw; margin-bottom: 2vh; }
+  .pod { width: min(22vw, 300px); display: flex; flex-direction: column; align-items: center; gap: 1vh; }
+  .pod .blk { width: 100%; border-radius: 14px 14px 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 1vh; font-family: var(--display); font-size: 7vh; }
+  .pod .nm { font-weight: 700; font-size: clamp(18px, 3vh, 34px); }
+  .pod .pt { color: var(--muted); }
+
+  /* Kontrollrad */
+  #controls { position: fixed; left: 0; right: 0; bottom: 0; height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: rgba(8,5,18,.92); border-top: 1px solid var(--panel-line); z-index: 10; }
+  #controls .btn { padding: .55em 1.2em; }
+  #controls select { background: var(--bg2); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px; max-width: 260px; }
+  #controls .spacer { flex: 1; }
+  #controls .info { color: var(--muted); font-size: 14px; white-space: nowrap; }
+  .hint { font-size: 12px; color: var(--muted); }
+  body.presenting #controls { opacity: 0; transition: opacity .3s; }
+  body.presenting #controls:hover { opacity: 1; }
+  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #3a1630; border: 1px solid var(--bad); padding: 8px 16px; border-radius: 999px; z-index: 20; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="controls">
+  <button class="btn ghost" id="prev" title="Föregående (←)">◀</button>
+  <button class="btn" id="next" title="Nästa (→ eller mellanslag)">Nästa ▶</button>
+  <button class="btn ghost hidden" id="play" title="Spela/pausa (P)">⏯ Spela</button>
+  <select id="jump" title="Hoppa till"></select>
+  <span class="info" id="info"></span>
+  <span class="spacer"></span>
+  <span class="hint">← → navigera · P spela/pausa · F helskärm · H dölj rad</span>
+  <button class="btn ghost" id="teamsBtn" title="Lag">Lag</button>
+  <button class="btn ghost" id="libBtn" title="Tillbaka till biblioteket">Bibliotek</button>
+  <button class="btn ghost" id="fs" title="Helskärm (F)">⛶</button>
+</div>
+<div class="toast hidden" id="toast">Tappade anslutningen till servern…</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const M = (f) => "/media/" + encodeURIComponent(f);
+const isAudio = (f) => /\.(mp3|m4a|aac|wav|ogg|oga|opus)$/i.test(f || "");
+const stage = $("#stage");
+let S = null, version = 0, renderedStep = -1, renderedKey = "", media = null, fadeTimer = null;
+let JOIN_URL = "";
+
+async function action(body) {
+  const r = await fetch("/api/host/action", { method: "POST", headers: { "Content-Type": "application/json", "X-Musikquiz": "1" }, body: JSON.stringify(body) });
+  if (r.ok) apply(await r.json());
+}
+
+async function poll() {
+  for (;;) {
+    try {
+      const r = await fetch(`/api/host/state?v=${version}`, { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      $("#toast").classList.add("hidden");
+      apply(await r.json());
+    } catch (e) {
+      $("#toast").classList.remove("hidden");
+      await new Promise((res) => setTimeout(res, 2000));
+    }
+  }
+}
+
+function apply(s) {
+  if (s.v < version) return;
+  version = s.v; S = s;
+  if (s.kind === "idle") { location.href = "/"; return; }
+  const join = (s.conn && s.conn.joinUrl) || "";
+  const joinChanged = join !== JOIN_URL;
+  JOIN_URL = join;
+  const jump = $("#jump");
+  if (jump.options.length !== s.steps.length) jump.innerHTML = s.steps.map((l, i) => `<option value="${i}">${i + 1}. ${esc(l)}</option>`).join("");
+  jump.value = s.step;
+  $("#info").textContent = `${s.teams.length} lag anslutna`;
+  // Nytt quiz eller ny session ritar om allt, även om stegnumret råkar vara detsamma.
+  const key = `${s.quizId}|${s.step}|${s.steps.length}`;
+  if (key !== renderedKey) { renderedKey = key; renderedStep = s.step; renderSlide(); }
+  else if (joinChanged && s.kind === "lobby") renderSlide();
+  else renderLive();
+}
+
+// --- Media -------------------------------------------------------------------
+function stopMedia() {
+  clearInterval(fadeTimer);
+  if (media) {
+    const el = media.el;
+    const start = el.volume;
+    let t = 0;
+    const id = setInterval(() => { t += 50; el.volume = Math.max(0, start * (1 - t / 600)); if (t >= 600) { clearInterval(id); el.pause(); el.removeAttribute("src"); el.load(); } }, 50);
+  }
+  media = null;
+  $("#play").classList.add("hidden");
+}
+function setupMedia(el, { trim, autoplay = true, volume = 0.8 } = {}) {
+  media = { el, trim, volume };
+  el.volume = 0;
+  el.preload = "auto";
+  $("#play").classList.remove("hidden");
+  el.addEventListener("loadedmetadata", () => { if (trim) el.currentTime = trim[0]; }, { once: true });
+  el.addEventListener("timeupdate", () => {
+    const end = (trim && trim[1]) || el.duration;
+    const st = (trim && trim[0]) || 0;
+    const bar = stage.querySelector(".bar > div");
+    if (bar && end) bar.style.width = `${Math.min(100, ((el.currentTime - st) / (end - st)) * 100)}%`;
+    if (trim && trim[1] && el.currentTime >= trim[1]) el.pause();
+  });
+  el.addEventListener("play", syncPlayUi); el.addEventListener("pause", syncPlayUi);
+  if (autoplay) play();
+  syncPlayUi();
+}
+function play() {
+  if (!media) return;
+  const el = media.el;
+  el.play().then(() => fadeTo(media.volume, 1500)).catch(() => {});
+}
+function togglePlay() {
+  if (!media) return;
+  const el = media.el;
+  if (el.paused) { if (el.tagName === "VIDEO") el.classList.remove("hidden"); play(); }
+  else fadeTo(0, 500, () => el.pause());
+}
+function fadeTo(target, ms, done) {
+  if (!media) return;
+  const el = media.el, from = el.volume, t0 = performance.now();
+  clearInterval(fadeTimer);
+  fadeTimer = setInterval(() => {
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    el.volume = from + (target - from) * k;
+    if (k >= 1) { clearInterval(fadeTimer); done && done(); }
+  }, 40);
+}
+function syncPlayUi() {
+  const playing = media && !media.el.paused;
+  $("#play").textContent = playing ? "⏸ Pausa" : "▶ Spela";
+  stage.querySelectorAll(".eq").forEach((e) => e.classList.toggle("paused", !playing));
+}
+
+// --- Bilder --------------------------------------------------------------------
+function optsHtml(q, { row = false, col = false, facit = false } = {}) {
+  if (!q.options || !q.options.length) return "";
+  return `<div class="hopts ${row ? "row" : ""} ${col ? "col" : ""}" ${facit ? 'id="hopts"' : ""}>${q.options.map((o, i) =>
+    `<div class="hopt" data-o="${esc(o)}"><span class="L">${"ABCD"[i]}</span><span>${esc(o)}</span>${facit ? '<span class="cnt"></span>' : ""}</div>`).join("")}</div>`;
+}
+let revealTimer = null;
+function renderSlide() {
+  clearInterval(revealTimer);
+  stopMedia();
+  const s = S, r = s.round, q = s.question;
+  let html = "";
+  switch (s.kind) {
+    case "soundcheck":
+      html = `<div class="slide"><div class="kicker">Förberedelser</div><h1 class="hero display grad">Ljudtest</h1>
+        <div class="eq"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <p class="sub muted">Kontrollera att musiken hörs i hela rummet. Tryck <b>P</b> för att spela/pausa.</p>
+        <p class="muted">Sätt sedan storbildsläge med <b>F</b> och gå vidare med <b>→</b> till sidan där lagen ansluter.</p>
+        <audio id="aud" src="${s.soundcheck ? M(s.soundcheck) : "/static/ljudtest.wav"}" loop></audio></div>`;
+      break;
+    case "lobby": {
+      const c = s.conn || {}, t = c.tunnel || {};
+      const short = (u) => esc(u.replace(/^https?:\/\//, "").replace(/\/$/, ""));
+      const where = JOIN_URL
+        ? `<p class="sub">Skanna QR-koden eller gå till</p><div class="url grad">${short(JOIN_URL)}</div>
+           ${c.lanUrl && c.lanUrl !== JOIN_URL ? `<div class="lanurl">På samma wifi går även ${short(c.lanUrl)}</div>` : ""}`
+        : `<p class="conn-wait">${t.status === "starting" ? "Internetadressen startar – vänta några sekunder…"
+            : "Ingen adress för lagen ännu. Gå till biblioteket och slå på <b>wifi-läget</b>, eller starta om internetadressen."}</p>`;
+      html = `<div class="slide"><div class="lobby">
+        <div><div class="kicker">Välkommen till</div><h1 class="hero display grad">${esc(s.title)}</h1>
+          ${where}
+          <p class="muted" style="font-size:2.2vh">Ett lag = en mobil. Skriv ert lagnamn och vänta på första frågan.</p>
+          <div class="chips" id="chips"></div></div>
+        <div style="display:flex;justify-content:center"><div class="qr" id="qr"></div></div></div></div>`;
+      break;
+    }
+    case "rules":
+      html = `<div class="slide"><h1 class="hero display grad">Regler</h1><ol class="big card">${s.rules.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>`;
+      break;
+    case "rounds":
+      html = `<div class="slide"><h1 class="hero display grad">Rundorna</h1><ol class="big card">${s.rounds.map((x) => `<li>${esc(x.title)} – ${x.count} frågor</li>`).join("")}</ol></div>`;
+      break;
+    case "round_intro":
+      html = `<div class="slide"><div class="kicker">Runda ${r.n} av ${s.rounds.length}</div><div class="frame plate"><h1 class="hero display grad">${esc(r.title)}</h1></div>
+        <p class="sub">Frågor · ${esc(r.instruction)}</p><p class="muted">Svara på mobilen – ni kan ändra svaren tills rundan låses.</p></div>`;
+      break;
+    case "question":
+      if (r.type === "trivia") {
+        html = `<div class="slide"><div class="kicker">Runda ${r.n} · ${esc(r.title)} · ${q.label}</div><p class="qtext">${esc(q.q)}</p>${optsHtml(q)}</div>`;
+      } else if (r.type === "image") {
+        html = `<div class="slide"><div class="kicker">Runda ${r.n} · ${esc(r.title)} · ${esc(r.instruction)}</div>
+          <div class="imgq"><img class="cover" src="${M(q.questionImage || q.image)}" alt="">
+            <div><h2 class="sub display grad" style="font-size:7vh;margin-bottom:2vh">${q.label}</h2>${optsHtml(q, { col: true })}</div></div></div>`;
+      } else {
+        const bg = s.background ? `<div class="notes-bg" style="background-image:url('${M(s.background)}')"></div>` : "";
+        html = `<div class="slide">${bg}<div class="kicker">Runda ${r.n} · ${esc(r.title)}</div>
+          <h2 class="qnum small display grad">${q.label}</h2><p class="sub">${esc(r.instruction)}</p>
+          <div class="player"><div class="eq paused" style="height:7vh">${"<span></span>".repeat(15)}</div><div class="bar"><div></div></div></div>
+          ${optsHtml(q)}
+          <video id="vid" class="hidden" playsinline src="${M(q.video)}"></video></div>`;
+      }
+      html += `<div class="answered card" id="answered"></div>`;
+      break;
+    case "answers_intro":
+      html = `<div class="slide"><div class="kicker">Runda ${r.n} av ${s.rounds.length}</div><div class="frame plate"><h1 class="hero display grad">${esc(r.title)}</h1></div>
+        <p class="sub">Facit</p><p class="muted">Svaren är nu låsta.</p></div>`;
+      break;
+    case "answer": {
+      const imgs = r.type === "trivia" ? (q.images || []) : r.type === "image" ? [q.image] : [];
+      let mediaHtml = imgs.map((f) => `<img src="${M(f)}" alt="">`).join("");
+      if (r.type === "video") {
+        // Som i originalet: videon spelas direkt, omslag och artist tonas in efter 10 sekunder.
+        // Ljudfil: facitbilden visas i stället för videon.
+        const audio = isAudio(q.video);
+        const left = audio
+          ? `${q.answerImage ? `<img class="audiocover" src="${M(q.answerImage)}" alt="">` : `<div class="eq">${"<span></span>".repeat(11)}</div>`}<audio id="vid" src="${M(q.video)}"></audio>`
+          : `<video id="vid" playsinline src="${M(q.video)}"></video>`;
+        html = `<div class="slide ${s.revealed ? "" : "waiting"}"><div class="kicker">Runda ${r.n} · ${esc(r.title)} · Facit · ${q.label}</div>
+          <div class="vanswer"><div>${left}</div>
+            <div class="vreveal">${q.answerImage && !audio ? `<img src="${M(q.answerImage)}" alt="">` : ""}
+              <h2 class="ans display grad">${esc(q.a)}</h2>${q.song ? `<p class="song">”${esc(q.song)}”</p>` : ""}</div></div>
+          <p class="revealhint">Svaret visas om <b id="cd">10</b> s · tryck → för att visa direkt</p>
+          ${optsHtml(q, { row: true, facit: true })}<div class="tanswers" id="tanswers"></div></div>`;
+        break;
+      }
+      const title = r.type === "trivia" ? `<p class="qsmall">${q.label}: ${esc(q.q)}</p>` : `<p class="qsmall">${q.label} · ${esc(r.instruction)}</p>`;
+      html = `<div class="slide"><div class="kicker">Runda ${r.n} · ${esc(r.title)} · Facit</div>
+        <div class="answer-layout ${mediaHtml ? "" : "noimg"}">
+          ${mediaHtml ? `<div class="answer-media">${mediaHtml}</div>` : ""}
+          <div>${title}<h2 class="ans display grad">${esc(q.a)}</h2>
+            ${q.song ? `<p class="song">”${esc(q.song)}”</p>` : ""}${q.fact ? `<p class="fact">${esc(q.fact)}</p>` : ""}</div>
+        </div>${optsHtml(q, { row: true, facit: true })}<div class="tanswers" id="tanswers"></div></div>`;
+      break;
+    }
+    case "scores":
+      html = `<div class="slide"><div class="kicker">Runda ${r.n} av ${s.rounds.length} klar</div><h1 class="sub display grad" style="font-size:9vh">Ställning</h1><div class="board" id="board"></div></div>`;
+      break;
+    case "final":
+      html = `<div class="slide"><h1 class="sub display grad" style="font-size:9vh">Slutresultat</h1><div class="podium" id="podium"></div><div class="board" id="board"></div></div>`;
+      break;
+    case "thanks":
+      html = `<div class="slide"><div class="frame plate"><h1 class="hero display grad">Tack för att ni spelade!</h1></div>
+        <div class="eq ${s.outro ? "" : "paused"}">${"<span></span>".repeat(9)}</div>${s.outro ? `<audio id="aud" src="${M(s.outro)}"></audio>` : ""}</div>`;
+      break;
+  }
+  stage.innerHTML = html;
+
+  if (s.kind === "lobby") drawQr();
+  if (s.kind === "soundcheck") setupMedia($("#aud"), { autoplay: false, volume: 0.8 });
+  if (s.kind === "thanks" && $("#aud")) setupMedia($("#aud"), { volume: 1 });
+  if (s.kind === "question" && r.type === "video") setupMedia($("#vid"), { trim: q.trim });
+  if (s.kind === "answer" && r.type === "video") {
+    setupMedia($("#vid"), { trim: q.trim });
+    if (!s.revealed) {
+      let left = 10;
+      revealTimer = setInterval(() => {
+        left -= 1;
+        const cd = $("#cd"); if (cd) cd.textContent = left;
+        if (left <= 0) { clearInterval(revealTimer); action({ action: "reveal" }); }
+      }, 1000);
+    }
+  }
+  renderLive();
+}
+
+function renderLive() {
+  const s = S;
+  if (s.kind === "lobby") {
+    const chips = $("#chips");
+    if (chips) chips.innerHTML = s.teams.map((t) => `<span class="chip">${esc(t.name)}</span>`).join("") || `<span class="muted">Inga lag anslutna ännu…</span>`;
+  }
+  if (s.kind === "question") {
+    const a = $("#answered");
+    if (a) a.textContent = `${s.answered} av ${s.teams.length} lag har svarat`;
+  }
+  if (s.kind === "answer") {
+    if (s.revealed) clearInterval(revealTimer);
+    stage.querySelector(".slide")?.classList.toggle("waiting", s.revealed === false);
+    stage.querySelectorAll("#hopts .hopt").forEach((el) => {
+      const n = (s.counts || {})[el.dataset.o] || 0;
+      el.querySelector(".cnt").textContent = `${n} lag`;
+      const right = el.dataset.o === s.question.correctOption;
+      el.classList.toggle("right", right);
+      el.classList.toggle("dim", !right);
+    });
+    const box = $("#tanswers");
+    if (box) {
+      const letter = (a) => { const i = (s.question.options || []).indexOf(a); return i >= 0 ? "ABCD"[i] + " · " : ""; };
+      box.innerHTML = s.teamAnswers.map((t) => `<button class="ta ${t.correct ? "ok" : "bad"} ${t.manual ? "manual" : ""}" data-id="${t.id}" data-c="${t.correct ? 1 : 0}" title="Klicka för att ändra rättningen">
+        <div class="tn">${t.correct ? "✓" : "✗"} ${esc(t.name)}</div><div class="tv">${t.answer ? letter(t.answer) + esc(t.answer) : "–"}</div></button>`).join("");
+      box.querySelectorAll(".ta").forEach((b) => b.addEventListener("click", () =>
+        action({ action: "mark", team: b.dataset.id, key: `${s.round.n - 1}-${s.q}`, value: b.dataset.c !== "1" })));
+    }
+  }
+  if (s.kind === "scores" || s.kind === "final") {
+    let rows = s.scores;
+    const max = Math.max(1, ...rows.map((x) => x.total));
+    const pod = $("#podium");
+    if (pod) {
+      const top = rows.slice(0, 3);
+      const order = [top[1], top[0], top[2]].filter(Boolean);
+      const h = { 1: 30, 2: 22, 3: 16 };
+      const col = { 1: "linear-gradient(var(--pink), var(--violet))", 2: "linear-gradient(var(--cyan), var(--violet))", 3: "linear-gradient(var(--violet), #3b2370)" };
+      pod.innerHTML = order.map((x) => `<div class="pod"><div class="nm">${esc(x.name)}</div><div class="pt">${x.total} poäng</div>
+        <div class="blk" style="height:${h[x.place] || 12}vh;background:${col[x.place] || col[3]}">${x.place}</div></div>`).join("");
+      rows = rows.slice(3);
+    }
+    const board = $("#board");
+    if (board) board.innerHTML = rows.slice(0, pod ? 7 : 10).map((x) => `<div class="brow card"><div class="fill" style="width:${(x.total / max) * 100}%"></div>
+      <span class="pl">${x.place}</span><span>${esc(x.name)}</span><span><span class="rs">${x.rounds.join(" · ")}</span>${x.total} p</span></div>`).join("")
+      || (pod ? "" : `<p class="muted">Inga lag ännu.</p>`);
+  }
+}
+
+function drawQr() {
+  const box = $("#qr");
+  if (!box) return;
+  if (!JOIN_URL) { box.innerHTML = `<p style="color:#000;padding:1em;text-align:center">QR-koden visas när adressen är klar.</p>`; return; }
+  if (typeof qrcode !== "function") { box.innerHTML = `<p style="color:#000;padding:1em">QR-koden kunde inte laddas – använd adressen.</p>`; return; }
+  const qr = qrcode(0, "M"); qr.addData(JOIN_URL); qr.make();
+  box.innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+}
+
+// --- Lag-panel (byt namn finns inte; ta bort lag som anslutit av misstag) -------
+$("#teamsBtn").addEventListener("click", () => {
+  if (!S) return;
+  const list = S.teams.map((t, i) => `${i + 1}. ${t.name}`).join("\n") || "(inga lag)";
+  const n = prompt(`Anslutna lag:\n${list}\n\nSkriv numret på ett lag för att ta bort det, eller RESET för att nollställa hela quizet:`);
+  if (!n) return;
+  if (n.trim().toUpperCase() === "RESET") {
+    if (confirm("Nollställ quizet? Alla lag, svar och poäng raderas.")) action({ action: "reset" });
+    return;
+  }
+  const t = S.teams[+n - 1];
+  if (t && confirm(`Ta bort laget "${t.name}" och dess svar?`)) action({ action: "kick", team: t.id });
+});
+
+// --- Kontroller ----------------------------------------------------------------
+function goNext() {
+  if (S && S.kind === "answer" && S.revealed === false) action({ action: "reveal" });
+  else action({ action: "next" });
+}
+$("#libBtn").addEventListener("click", () => {
+  // Quizet fortsätter att vara igång – det går att komma tillbaka hit från biblioteket.
+  location.href = "/";
+});
+$("#next").addEventListener("click", goNext);
+$("#prev").addEventListener("click", () => action({ action: "prev" }));
+$("#play").addEventListener("click", togglePlay);
+$("#jump").addEventListener("change", (e) => action({ action: "goto", step: +e.target.value }));
+$("#fs").addEventListener("click", toggleFs);
+function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); goNext(); }
+  else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); action({ action: "prev" }); }
+  else if (e.key === "p" || e.key === "P") togglePlay();
+  else if (e.key === "f" || e.key === "F") toggleFs();
+  else if (e.key === "h" || e.key === "H") document.body.classList.toggle("presenting");
+});
+poll();
+</script>
+</body>
+</html>

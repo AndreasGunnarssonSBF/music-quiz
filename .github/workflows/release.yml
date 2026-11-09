@@ -1,0 +1,60 @@
+# Bygger Musikquiz för Mac (Apple Silicon) och Windows och lägger zip-filerna i en GitHub Release.
+# Starta genom att pusha en tagg, t.ex.:  git tag v2.0 && git push origin v2.0
+# Går också att köra för hand under Actions → Bygg och släpp → Run workflow (då blir det bara byggfiler, ingen release).
+name: Bygg och släpp
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python tests/test_server.py
+
+  mac:
+    needs: test
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Bygg
+        run: PYTHON="$(which python)" ./build/build_mac.sh
+      - uses: actions/upload-artifact@v4
+        with: { name: Musikquiz-mac, path: dist/Musikquiz-mac.zip }
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Bygg
+        run: powershell -ExecutionPolicy Bypass -File build\build_windows.ps1
+      - uses: actions/upload-artifact@v4
+        with: { name: Musikquiz-windows, path: dist/Musikquiz-windows.zip }
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [mac, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: dl, merge-multiple: true }
+      - name: Skapa release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dl/Musikquiz-mac.zip dl/Musikquiz-windows.zip \
+            --title "Musikquiz $GITHUB_REF_NAME" --notes-file docs/release-notes.md

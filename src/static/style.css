@@ -1,0 +1,58 @@
+:root {
+  --bg: #0b0716;
+  --bg2: #160d2b;
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-line: rgba(255, 255, 255, 0.14);
+  --text: #f6f1ff;
+  --muted: #b9add6;
+  --pink: #ff3fb4;
+  --cyan: #2fd6ff;
+  --violet: #8b5cff;
+  --ok: #33e39a;
+  --bad: #ff5d6c;
+  --radius: 16px;
+  --display: "Bebas Neue", "Arial Narrow", Impact, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: radial-gradient(1200px 800px at 15% 0%, #2a0f4a 0%, transparent 60%),
+              radial-gradient(1000px 700px at 100% 100%, #062a40 0%, transparent 60%),
+              var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+select option { background: var(--bg2); color: var(--text); }
+
+.display { font-family: var(--display); letter-spacing: 0.03em; line-height: 0.95; font-weight: 400; }
+.grad {
+  background: linear-gradient(90deg, var(--pink), var(--violet) 50%, var(--cyan));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.muted { color: var(--muted); }
+.hidden { display: none !important; }
+
+.btn {
+  border: 0; border-radius: 999px; padding: 0.8em 1.6em; cursor: pointer;
+  background: linear-gradient(90deg, var(--pink), var(--violet));
+  color: #fff; font-weight: 700; letter-spacing: 0.02em;
+  box-shadow: 0 6px 24px rgba(255, 63, 180, 0.35);
+}
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn.ghost { background: var(--panel); box-shadow: none; border: 1px solid var(--panel-line); font-weight: 600; }
+
+.card {
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius);
+  backdrop-filter: blur(6px);
+}
+.frame {
+  border: 2px solid rgba(255, 63, 180, 0.7); border-radius: 22px;
+  box-shadow: 0 0 24px rgba(255, 63, 180, 0.45), inset 0 0 24px rgba(255, 63, 180, 0.2);
+}
+
+.ok { color: var(--ok); }
+.bad { color: var(--bad); }

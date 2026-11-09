@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redigera quiz – Musikquiz</title>
+<link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/fonts/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  .bar { position: sticky; top: 0; z-index: 20; background: rgba(11,7,22,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--panel-line); }
+  .bar .in { max-width: 1080px; margin: 0 auto; padding: 10px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .bar .ttl { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .save { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .save.bad { color: var(--bad); }
+  .status { cursor: pointer; }
+  .panel { padding: 18px; margin-bottom: 14px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .round { margin-top: 18px; padding: 0; overflow: hidden; }
+  .rhead { display: flex; gap: 10px; align-items: center; padding: 14px 18px; background: rgba(255,255,255,.04); border-bottom: 1px solid var(--panel-line); flex-wrap: wrap; }
+  .rhead .num { font-family: var(--display); font-size: 30px; color: var(--pink); line-height: 1; }
+  .rbody { padding: 18px; }
+  .rbody.collapsed .qs, .rbody.collapsed .addq { display: none; }
+  .types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 6px; }
+  .type { text-align: left; padding: 12px; border-radius: 12px; border: 1px solid var(--panel-line); background: rgba(0,0,0,.25); cursor: pointer; }
+  .type b { display: block; margin-bottom: 3px; }
+  .type span { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .type.on { border-color: var(--pink); background: linear-gradient(90deg, rgba(255,63,180,.2), rgba(139,92,255,.16)); }
+  .qs { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+  .q { padding: 16px; border-radius: 14px; border: 1px solid var(--panel-line); background: rgba(0,0,0,.22); }
+  .q .qh { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .q .qh .n { font-weight: 700; font-size: 17px; flex: 1; }
+  .q.has-problem { border-color: rgba(255,201,77,.55); }
+  .iconbtn { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 15px; line-height: 1; }
+  .iconbtn:hover { border-color: var(--cyan); }
+  .iconbtn:disabled { opacity: .35; cursor: default; }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .opts .o { display: flex; align-items: center; gap: 8px; }
+  .opts .o .L { font-size: 12px; font-weight: 700; color: var(--muted); width: 74px; flex: none; }
+  .opts .o:first-child .L { color: var(--ok); }
+  .mf { border: 1px dashed var(--panel-line); border-radius: 12px; padding: 10px; display: flex; gap: 12px; align-items: center; min-height: 64px; }
+  .mf.over { border-color: var(--cyan); background: rgba(47,214,255,.08); }
+  .mf .pv img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; display: block; }
+  .mf .pv .ph { width: 72px; height: 72px; border-radius: 8px; background: rgba(255,255,255,.05); display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--muted); }
+  .mf .nm { font-size: 13px; color: var(--muted); word-break: break-all; }
+  .mf .missing { color: var(--bad); }
+  .prog { height: 6px; border-radius: 3px; background: var(--panel); overflow: hidden; margin-top: 6px; }
+  .prog > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--pink), var(--cyan)); }
+  .thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
+  .thumb { position: relative; }
+  .thumb img { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; display: block; }
+  .thumb button { position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--bad); color: #fff; cursor: pointer; font-size: 13px; }
+  .player video, .player audio { width: 100%; max-height: 240px; border-radius: 10px; background: #000; margin-top: 10px; }
+  .trim { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 8px; align-items: end; margin-top: 10px; }
+  .addq { margin-top: 14px; }
+  .sub { font-weight: 700; font-size: 14px; margin: 14px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  @media (max-width: 760px) { .two, .three, .types, .opts { grid-template-columns: 1fr; } .trim { grid-template-columns: 1fr auto; } }
+</style>
+</head>
+<body>
+<div class="bar"><div class="in">
+  <a class="btn ghost sm" href="/">← Bibliotek</a>
+  <span class="ttl grow" id="barTitle"></span>
+  <span class="pill status" id="status" title="Visa vad som saknas"></span>
+  <span class="save" id="save"></span>
+</div></div>
+
+<div class="wrap" style="padding-top:22px">
+  <div id="probs" class="hidden" style="margin-bottom:14px"></div>
+
+  <div class="panel card">
+    <div class="field"><label class="f" for="title">Quizets namn</label><input class="t" id="title" data-path="title" maxlength="120"></div>
+    <div class="field" style="margin:0"><label class="f" for="rules">Regler</label>
+      <textarea class="t" id="rules" rows="4"></textarea>
+      <p class="hint">En regel per rad. Visas på storskärmen och i mobilerna innan första rundan.</p></div>
+  </div>
+
+  <details class="panel card" id="extras">
+    <summary style="cursor:pointer;font-weight:700">Musik och bakgrund (valfritt)</summary>
+    <div class="three" style="margin-top:14px" id="extraFields"></div>
+  </details>
+
+  <div id="rounds"></div>
+  <div class="row" style="margin-top:18px"><button class="btn" id="addRound">+ Lägg till runda</button></div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ID = new URLSearchParams(location.search).get("id");
+const MURL = (f) => `/qmedia/${encodeURIComponent(ID)}/${encodeURIComponent(f)}`;
+const isImg = (f) => /\.(jpe?g|png|gif|webp|avif)$/i.test(f || "");
+const isAud = (f) => /\.(mp3|m4a|aac|wav|ogg|oga|opus)$/i.test(f || "");
+let Q = null, MEDIA = new Set(), PROBLEMS = [];
+const collapsed = new Set();
+
+const TYPES = {
+  trivia: { name: "Textfrågor", desc: "Frågan visas som text. Bilder och fakta kan visas i facit.", instr: "Svara på frågan", label: "Fråga" },
+  image:  { name: "Bildfrågor", desc: "En bild visas på storskärmen, t.ex. ett skivomslag.", instr: "Vilken artist gjorde albumet?", label: "Bild" },
+  video:  { name: "Låtar", desc: "Musiken spelas på storskärmen. Videon visas först i facit.", instr: "Vem är artisten?", label: "Låt" },
+};
+
+// --- Laddning och sparning -------------------------------------------------------
+async function load() {
+  const r = await fetch("/api/admin/quiz?id=" + encodeURIComponent(ID), { cache: "no-store" });
+  if (!r.ok) { document.body.innerHTML = `<div class="wrap"><h1 class="page display grad">Quizet finns inte</h1><p><a href="/">Till biblioteket</a></p></div>`; return; }
+  const d = await r.json();
+  Q = d.quiz; MEDIA = new Set(d.media); PROBLEMS = d.problems;
+  Q.rules = Q.rules || []; Q.rounds = Q.rounds || [];
+  const total = Q.rounds.reduce((n, r) => n + (r.questions || []).length, 0);
+  if (total > 15) Q.rounds.forEach((_, i) => collapsed.add(i));
+  $("#title").value = Q.title || "";
+  $("#rules").value = Q.rules.join("\n");
+  renderExtras(); renderRounds(); renderStatus();
+  if (Q.soundcheck || Q.outro || Q.background) $("#extras").open = true;
+}
+
+let saveTimer = null, saving = false, dirty = false;
+function changed() {
+  dirty = true;
+  $("#save").textContent = "Osparade ändringar";
+  $("#save").classList.remove("bad");
+  $("#barTitle").textContent = Q.title || "Namnlöst quiz";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 700);
+}
+async function save() {
+  if (saving) { saveTimer = setTimeout(save, 300); return; }
+  saving = true; dirty = false;
+  $("#save").textContent = "Sparar…";
+  try {
+    const r = await fetch("/api/admin/quiz/save", { method: "POST", headers: { "Content-Type": "application/json", "X-Musikquiz": "1" }, body: JSON.stringify({ id: ID, quiz: Q }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Kunde inte spara");
+    PROBLEMS = d.problems || [];
+    if (!dirty) $("#save").textContent = "Sparat ✓";
+    renderStatus();
+  } catch (e) {
+    dirty = true;
+    $("#save").textContent = "Kunde inte spara – försöker igen";
+    $("#save").classList.add("bad");
+    saveTimer = setTimeout(save, 3000);
+  } finally { saving = false; }
+}
+window.addEventListener("beforeunload", (e) => { if (dirty || saving) { e.preventDefault(); e.returnValue = ""; } });
+document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); clearTimeout(saveTimer); save(); } });
+// Håller appen vid liv medan redigeraren är öppen.
+setInterval(() => fetch("/api/admin/ping").catch(() => {}), 60000);
+
+function renderStatus() {
+  const s = $("#status");
+  $("#barTitle").textContent = Q.title || "Namnlöst quiz";
+  if (!PROBLEMS.length) s.innerHTML = `<span class="dot ok"></span>Klart att starta`;
+  else s.innerHTML = `<span class="dot warn"></span>${PROBLEMS.length} ${PROBLEMS.length === 1 ? "sak" : "saker"} kvar`;
+  const box = $("#probs");
+  if (!box.classList.contains("hidden")) showProblems();
+  // Markera frågor med problem
+  document.querySelectorAll(".q").forEach((el) => {
+    const tag = `Runda ${+el.dataset.r + 1}, fråga ${+el.dataset.q + 1}:`;
+    el.classList.toggle("has-problem", PROBLEMS.some((p) => p.startsWith(tag)));
+  });
+}
+function showProblems() {
+  const box = $("#probs");
+  box.classList.remove("hidden");
+  box.innerHTML = PROBLEMS.length
+    ? `<ul class="problems">${PROBLEMS.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>`
+    : `<div class="ok-box">✓ Allt ser bra ut – quizet kan startas från biblioteket.</div>`;
+}
+$("#status").onclick = () => { const b = $("#probs"); if (b.classList.contains("hidden")) showProblems(); else b.classList.add("hidden"); };
+
+let toastTimer;
+function toast(msg, bad) {
+  const t = $("#toast"); t.textContent = msg; t.className = "toast" + (bad ? " bad" : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hidden"), bad ? 6000 : 2500);
+}
+
+// --- Fält som skriver direkt i Q ----------------------------------------------------
+function getPath(path) { return path.split(".").reduce((o, k) => (o == null ? o : o[k]), Q); }
+function setPath(path, val) {
+  const ks = path.split("."); let o = Q;
+  for (let i = 0; i < ks.length - 1; i++) {
+    if (o[ks[i]] == null) o[ks[i]] = /^\d+$/.test(ks[i + 1]) ? [] : {};
+    o = o[ks[i]];
+  }
+  if (val === undefined || val === "" || val === null) {
+    if (Array.isArray(o)) o[ks.at(-1)] = val ?? ""; else delete o[ks.at(-1)];
+  } else o[ks.at(-1)] = val;
+}
+document.addEventListener("input", (e) => {
+  const el = e.target;
+  if (el.id === "rules") { Q.rules = el.value.split("\n").map((x) => x.trim()).filter(Boolean); return changed(); }
+  const path = el.dataset.path;
+  if (!path) return;
+  if (el.dataset.trim !== undefined) return setTrim(path, +el.dataset.trim, el.value);
+  setPath(path, el.value);
+  changed();
+});
+function setTrim(qpath, i, v) {
+  const q = getPath(qpath);
+  const t = Array.isArray(q.trim) ? q.trim.slice() : [null, null];
+  t[i] = v === "" || isNaN(parseFloat(v)) ? null : Math.max(0, parseFloat(String(v).replace(",", ".")));
+  if (t[0] == null && t[1] == null) delete q.trim; else q.trim = t;
+  changed();
+}
+
+// --- Mediafält ----------------------------------------------------------------------
+const ACCEPT = { image: "image/*", av: "video/*,audio/*,.m4a,.mp3,.wav,.mov", audio: "audio/*,.m4a,.mp3,.wav" };
+function mediaField(path, kind, { label, hint, required } = {}) {
+  const f = getPath(path);
+  const missing = f && !MEDIA.has(f);
+  const pv = f && isImg(f) && !missing ? `<img src="${MURL(f)}" alt="" loading="lazy">` : `<div class="ph">${kind === "image" ? "🖼" : "♪"}</div>`;
+  return `<div class="field">${label ? `<label class="f">${esc(label)}${required ? "" : ' <span class="muted" style="font-weight:400">(valfri)</span>'}</label>` : ""}
+    <div class="mf" data-mpath="${esc(path)}" data-kind="${kind}">
+      <div class="pv">${pv}</div>
+      <div class="grow">
+        ${f ? `<div class="nm ${missing ? "missing" : ""}">${esc(f)}${missing ? " – filen saknas" : ""}</div>` : `<div class="nm">Ingen fil vald – välj eller dra hit en fil</div>`}
+        <div class="row" style="margin-top:6px">
+          <button type="button" class="btn ghost xs" data-act="pick">${f ? "Byt fil…" : "Välj fil…"}</button>
+          ${f ? `<button type="button" class="btn ghost xs" data-act="clear">Ta bort</button>` : ""}
+        </div>
+        <div class="prog hidden"><div></div></div>
+      </div>
+      <input type="file" class="hidden" accept="${ACCEPT[kind]}">
+    </div>${hint ? `<p class="hint">${hint}</p>` : ""}</div>`;
+}
+function wireMedia(root) {
+  root.querySelectorAll(".mf").forEach((mf) => {
+    const path = mf.dataset.mpath, input = $("input[type=file]", mf);
+    $('[data-act="pick"]', mf).onclick = () => input.click();
+    const clr = $('[data-act="clear"]', mf);
+    if (clr) clr.onclick = () => { setPath(path, ""); changed(); rerender(mf); };
+    input.onchange = () => { if (input.files[0]) upload(input.files[0], mf, (name) => { setPath(path, name); changed(); rerender(mf); }); input.value = ""; };
+    dropTarget(mf, (file) => upload(file, mf, (name) => { setPath(path, name); changed(); rerender(mf); }));
+  });
+  root.querySelectorAll(".imgs").forEach((box) => {
+    const path = box.dataset.ipath, input = $("input[type=file]", box);
+    $('[data-act="add"]', box).onclick = () => input.click();
+    box.querySelectorAll(".thumb button").forEach((b) => b.onclick = () => {
+      const arr = (getPath(path) || []).slice(); arr.splice(+b.dataset.i, 1);
+      setPath(path, arr.length ? arr : undefined); changed(); rerender(box);
+    });
+    const add = async (files) => {
+      for (const file of files) await new Promise((res) => upload(file, box, (name) => { setPath(path, [...(getPath(path) || []), name]); res(); }, res));
+      changed(); rerender(box);
+    };
+    input.onchange = () => { const fs = [...input.files]; input.value = ""; add(fs); };
+    dropTarget(box, (file, all) => add(all));
+  });
+}
+function dropTarget(el, cb) {
+  el.addEventListener("dragover", (e) => { e.preventDefault(); e.stopPropagation(); el.classList.add("over"); });
+  el.addEventListener("dragleave", () => el.classList.remove("over"));
+  el.addEventListener("drop", (e) => { e.preventDefault(); e.stopPropagation(); el.classList.remove("over"); const fs = [...e.dataTransfer.files]; if (fs[0]) cb(fs[0], fs); });
+}
+function rerender(el) {
+  const card = el.closest(".q");
+  if (card) renderQuestion(+card.dataset.r, +card.dataset.q); else renderExtras();
+}
+function upload(file, el, done, fail) {
+  const bar = $(".prog", el), fill = bar && $(".prog > div", el);
+  if (bar) bar.classList.remove("hidden");
+  const xhr = new XMLHttpRequest();
+  xhr.open("PUT", `/api/admin/media?id=${encodeURIComponent(ID)}&name=${encodeURIComponent(file.name)}`);
+  xhr.setRequestHeader("X-Musikquiz", "1");
+  xhr.upload.onprogress = (e) => { if (fill && e.lengthComputable) fill.style.width = (e.loaded / e.total * 100) + "%"; };
+  xhr.onload = () => {
+    if (bar) bar.classList.add("hidden");
+    let d = {}; try { d = JSON.parse(xhr.responseText); } catch (e) {}
+    if (xhr.status === 200 && d.name) { MEDIA.add(d.name); done(d.name); }
+    else { toast(d.error || "Uppladdningen misslyckades.", true); fail && fail(); }
+  };
+  xhr.onerror = () => { if (bar) bar.classList.add("hidden"); toast("Uppladdningen misslyckades.", true); fail && fail(); };
+  xhr.send(file);
+}
+
+// --- Inställningar (musik och bakgrund) -------------------------------------------------
+function renderExtras() {
+  const box = $("#extraFields");
+  box.innerHTML =
+    mediaField("soundcheck", "audio", { label: "Musik till ljudtestet", hint: "Spelas på första sidan för att testa ljudet. Utan fil spelas en inbyggd slinga." }) +
+    mediaField("outro", "audio", { label: "Avslutningsmusik", hint: "Spelas på tacksidan efter slutresultatet." }) +
+    mediaField("background", "image", { label: "Bakgrund till låtfrågor", hint: "Visas svagt bakom låtfrågorna. En animerad gif fungerar fint." });
+  wireMedia(box);
+}
+
+// --- Rundor och frågor ------------------------------------------------------------------
+function renderRounds() {
+  const box = $("#rounds");
+  box.innerHTML = Q.rounds.map((r, ri) => roundHtml(r, ri)).join("") ||
+    `<div class="card panel" style="text-align:center;color:var(--muted);margin-top:18px">Quizet har inga rundor ännu. Börja med att lägga till en runda.</div>`;
+  Q.rounds.forEach((r, ri) => wireRound(ri));
+  renderStatus();
+}
+function roundHtml(r, ri) {
+  const qs = r.questions || [];
+  const t = r.type || "trivia";
+  const col = collapsed.has(ri);
+  return `<div class="round card" id="round-${ri}">
+    <div class="rhead">
+      <span class="num">${ri + 1}</span>
+      <input class="t grow" style="max-width:420px" data-path="rounds.${ri}.title" value="${esc(r.title)}" placeholder="Rundans namn, t.ex. 80-talet" maxlength="80">
+      <span class="muted" style="font-size:14px">${qs.length} ${qs.length === 1 ? "fråga" : "frågor"}</span>
+      <span class="grow"></span>
+      <button class="btn ghost xs" data-ract="toggle">${col ? "Visa frågor ▾" : "Dölj frågor ▴"}</button>
+      <button class="iconbtn" data-ract="up" title="Flytta upp" ${ri === 0 ? "disabled" : ""}>↑</button>
+      <button class="iconbtn" data-ract="down" title="Flytta ner" ${ri === Q.rounds.length - 1 ? "disabled" : ""}>↓</button>
+      <button class="iconbtn" data-ract="del" title="Ta bort rundan">✕</button>
+    </div>
+    <div class="rbody ${col ? "collapsed" : ""}">
+      <div class="types">${Object.entries(TYPES).map(([k, v]) => `<button type="button" class="type ${k === t ? "on" : ""}" data-type="${k}"><b>${v.name}</b><span>${v.desc}</span></button>`).join("")}</div>
+      <div class="field" style="margin-top:12px"><label class="f">Instruktion till lagen</label>
+        <input class="t" data-path="rounds.${ri}.instruction" value="${esc(r.instruction)}" placeholder="${esc(TYPES[t].instr)}" maxlength="120"></div>
+      <div class="qs">${qs.map((q, qi) => `<div class="q" id="q-${ri}-${qi}" data-r="${ri}" data-q="${qi}">${questionInner(r, q, ri, qi)}</div>`).join("")}</div>
+      <div class="addq"><button class="btn ghost sm" data-ract="addq">+ Lägg till ${TYPES[t].label.toLowerCase()}</button></div>
+    </div>
+  </div>`;
+}
+function questionInner(r, q, ri, qi) {
+  const p = `rounds.${ri}.questions.${qi}`;
+  const t = r.type || "trivia";
+  const n = r.questions.length;
+  const opts = [0, 1, 2, 3].map((i) => (q.options || [])[i] || "");
+  let body = "";
+  if (t === "trivia") {
+    body = `<div class="field"><label class="f">Fråga</label><textarea class="t" rows="2" data-path="${p}.q" maxlength="600" placeholder="Skriv frågan här">${esc(q.q)}</textarea></div>`;
+  } else if (t === "image") {
+    body = `<div class="two">${mediaField(`${p}.image`, "image", { label: "Bild", required: true, hint: "Visas på storskärmen under frågan och i facit." })}
+      ${mediaField(`${p}.questionImage`, "image", { label: "Annan bild under frågan", hint: "T.ex. ett omslag där namnet är bortmålat. Då visas originalet först i facit." })}</div>`;
+  } else {
+    const v = q.video, tr = q.trim || [null, null];
+    const player = v && MEDIA.has(v) ? (isAud(v) ? `<audio controls preload="metadata" src="${MURL(v)}"></audio>` : `<video controls preload="metadata" src="${MURL(v)}"></video>`) : "";
+    body = `${mediaField(`${p}.video`, "av", { label: "Musikvideo eller ljudfil", required: true, hint: "Under frågan hörs bara ljudet – bilden visas först i facit. Ljudfiler (mp3, m4a) går också bra." })}
+      ${player ? `<div class="player">${player}</div>
+      <div class="trim">
+        <div><label class="f">Starta vid (sekunder)</label><input class="t" inputmode="decimal" data-path="${p}" data-trim="0" value="${tr[0] ?? ""}" placeholder="0"></div>
+        <button type="button" class="btn ghost xs" data-qact="setstart">Sätt start här</button>
+        <div><label class="f">Sluta vid (sekunder)</label><input class="t" inputmode="decimal" data-path="${p}" data-trim="1" value="${tr[1] ?? ""}" placeholder="till slutet"></div>
+        <button type="button" class="btn ghost xs" data-qact="setend">Sätt slut här</button>
+      </div><p class="hint">Spela upp, pausa där musiken ska börja eller sluta och tryck på knappen.</p>` : ""}
+      <div class="two" style="margin-top:12px">
+        <div class="field"><label class="f">Låttitel <span class="muted" style="font-weight:400">(valfri)</span></label><input class="t" data-path="${p}.song" value="${esc(q.song)}" maxlength="160" placeholder="Visas i facit"></div>
+        ${mediaField(`${p}.answerImage`, "image", { label: "Bild i facit", hint: "T.ex. artisten eller skivomslaget." })}
+      </div>`;
+  }
+  const facit = `<div class="two" style="margin-top:4px">
+      <div class="field"><label class="f">Facittext <span class="muted" style="font-weight:400">(valfri)</span></label>
+        <input class="t" data-path="${p}.a" value="${esc(q.a)}" maxlength="200" placeholder="${esc(opts[0] || "Samma som rätt svar")}">
+        <p class="hint">Visas stort i facit. Lämna tom för att visa rätt svar.</p></div>
+      ${t === "trivia" ? `<div class="field"><label class="f">Fakta i facit <span class="muted" style="font-weight:400">(valfri)</span></label><textarea class="t" rows="2" data-path="${p}.fact" maxlength="1200">${esc(q.fact)}</textarea></div>` : "<div></div>"}
+    </div>
+    ${t === "trivia" ? imagesField(`${p}.images`) : ""}`;
+  return `<div class="qh"><span class="n">${TYPES[t].label} ${qi + 1}</span>
+      <button class="iconbtn" data-qact="up" title="Flytta upp" ${qi === 0 ? "disabled" : ""}>↑</button>
+      <button class="iconbtn" data-qact="down" title="Flytta ner" ${qi === n - 1 ? "disabled" : ""}>↓</button>
+      <button class="iconbtn" data-qact="dup" title="Duplicera">⧉</button>
+      <button class="iconbtn" data-qact="del" title="Ta bort">✕</button></div>
+    ${body}
+    <div class="sub">Svarsalternativ</div>
+    <div class="opts">${opts.map((o, i) => `<div class="o"><span class="L">${i === 0 ? "✓ Rätt svar" : "Fel " + i}</span>
+      <input class="t ${i === 0 ? "right" : ""}" data-path="${p}.options.${i}" value="${esc(o)}" maxlength="120" placeholder="${i === 0 ? "Rätt svar" : i === 3 ? "Fel alternativ (valfritt)" : "Fel alternativ"}"></div>`).join("")}</div>
+    <p class="hint">Alternativen blandas automatiskt – lagen ser dem som A–D. Minst ett fel alternativ behövs.</p>
+    ${facit}`;
+}
+function imagesField(path) {
+  const imgs = getPath(path) || [];
+  return `<div class="field"><label class="f">Bilder i facit <span class="muted" style="font-weight:400">(valfria)</span></label>
+    <div class="mf imgs" data-ipath="${esc(path)}" style="flex-wrap:wrap">
+      <div class="thumbs">${imgs.map((f, i) => `<div class="thumb">${MEDIA.has(f) ? `<img src="${MURL(f)}" alt="" loading="lazy">` : `<div class="ph" style="width:84px;height:84px;display:flex;align-items:center;justify-content:center;color:var(--bad);font-size:12px;text-align:center">${esc(f)} saknas</div>`}<button type="button" data-i="${i}" title="Ta bort">✕</button></div>`).join("")}</div>
+      <div><button type="button" class="btn ghost xs" data-act="add">+ Lägg till bild</button><div class="prog hidden"><div></div></div></div>
+      <input type="file" class="hidden" accept="image/*" multiple>
+    </div></div>`;
+}
+function renderQuestion(ri, qi) {
+  const el = document.getElementById(`q-${ri}-${qi}`);
+  if (!el) return renderRounds();
+  el.innerHTML = questionInner(Q.rounds[ri], Q.rounds[ri].questions[qi], ri, qi);
+  wireQuestion(el);
+  renderStatus();
+}
+function wireRound(ri) {
+  const el = document.getElementById(`round-${ri}`);
+  const r = Q.rounds[ri];
+  el.querySelectorAll("[data-ract]").forEach((b) => b.onclick = () => {
+    const a = b.dataset.ract;
+    if (a === "toggle") { collapsed.has(ri) ? collapsed.delete(ri) : collapsed.add(ri); return renderRounds(); }
+    if (a === "up" || a === "down") {
+      const j = a === "up" ? ri - 1 : ri + 1;
+      [Q.rounds[ri], Q.rounds[j]] = [Q.rounds[j], Q.rounds[ri]];
+      swapSet(collapsed, ri, j);
+    }
+    if (a === "del") {
+      if ((r.questions || []).length && !confirm(`Ta bort runda ${ri + 1} ”${r.title || ""}” med ${r.questions.length} frågor?`)) return;
+      Q.rounds.splice(ri, 1);
+      const c = [...collapsed].filter((x) => x !== ri).map((x) => (x > ri ? x - 1 : x)); collapsed.clear(); c.forEach((x) => collapsed.add(x));
+    }
+    if (a === "addq") {
+      r.questions = r.questions || [];
+      r.questions.push({ options: ["", "", "", ""] });
+      collapsed.delete(ri);
+      changed(); renderRounds();
+      const card = document.getElementById(`q-${ri}-${r.questions.length - 1}`);
+      if (card) { card.scrollIntoView({ behavior: "smooth", block: "center" }); const f = card.querySelector("textarea.t") || card.querySelector(".opts input"); if (f) setTimeout(() => f.focus({ preventScroll: true }), 300); }
+      return;
+    }
+    changed(); renderRounds();
+  });
+  el.querySelectorAll("[data-type]").forEach((b) => b.onclick = () => {
+    const old = r.type || "trivia", nt = b.dataset.type;
+    if (old === nt) return;
+    if ((r.questions || []).length && !confirm("Byta typ på rundan? Frågornas text, bilder och filer som inte passar den nya typen döljs men finns kvar om du byter tillbaka.")) return;
+    r.type = nt;
+    if (!r.instruction || r.instruction === TYPES[old].instr) r.instruction = TYPES[nt].instr;
+    changed(); renderRounds();
+  });
+  el.querySelectorAll(".q").forEach(wireQuestion);
+}
+function wireQuestion(card) {
+  const ri = +card.dataset.r, qi = +card.dataset.q;
+  const qs = Q.rounds[ri].questions;
+  card.querySelectorAll("[data-qact]").forEach((b) => b.onclick = () => {
+    const a = b.dataset.qact;
+    if (a === "setstart" || a === "setend") {
+      const pl = card.querySelector(".player video, .player audio");
+      if (!pl) return;
+      const i = a === "setstart" ? 0 : 1;
+      const v = Math.round(pl.currentTime * 10) / 10;
+      setTrim(`rounds.${ri}.questions.${qi}`, i, String(v));
+      card.querySelector(`[data-trim="${i}"]`).value = v;
+      return;
+    }
+    if (a === "up" || a === "down") { const j = a === "up" ? qi - 1 : qi + 1; [qs[qi], qs[j]] = [qs[j], qs[qi]]; }
+    if (a === "dup") qs.splice(qi + 1, 0, JSON.parse(JSON.stringify(qs[qi])));
+    if (a === "del") {
+      const q = qs[qi];
+      const empty = !(q.q || q.video || q.image || (q.options || []).some(Boolean));
+      if (!empty && !confirm(`Ta bort fråga ${qi + 1}?`)) return;
+      qs.splice(qi, 1);
+    }
+    changed(); renderRounds();
+  });
+  wireMedia(card);
+}
+function swapSet(set, a, b) { const ha = set.has(a), hb = set.has(b); set.delete(a); set.delete(b); if (ha) set.add(b); if (hb) set.add(a); }
+
+$("#addRound").onclick = () => {
+  const prev = Q.rounds.at(-1);
+  const type = prev ? prev.type : "trivia";
+  Q.rounds.push({ title: "", type, instruction: TYPES[type].instr, questions: [] });
+  changed(); renderRounds();
+  const el = document.getElementById(`round-${Q.rounds.length - 1}`);
+  if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => el.querySelector("input").focus({ preventScroll: true }), 300); }
+};
+// Hindra att en fil som släpps bredvid ett fält öppnas i webbläsaren.
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => e.preventDefault());
+
+load();
+</script>
+</body>
+</html>

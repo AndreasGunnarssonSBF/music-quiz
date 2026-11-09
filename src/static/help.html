@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hjälp – Musikquiz</title>
+<link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/fonts/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  .doc { max-width: 760px; line-height: 1.6; }
+  .doc h2 { font-family: var(--display); font-weight: 400; font-size: 32px; letter-spacing: .03em; margin: 34px 0 8px; }
+  .doc li { margin: 4px 0; }
+  .doc kbd { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px; padding: 1px 7px; font-size: 13px; }
+  .doc .card { padding: 14px 18px; }
+</style>
+</head>
+<body>
+<div class="wrap doc">
+  <div class="topbar"><a class="logo display grad" href="/">Musikquiz</a><span class="spacer"></span><a class="btn ghost sm" href="/">← Bibliotek</a></div>
+  <h1 class="page display grad">Så funkar det</h1>
+  <p class="lead">Musikquiz körs på din egen dator. Storskärmen visas i webbläsaren och lagen svarar från sina mobiler. Ingen musik eller video lämnar datorn – mobilerna får bara frågor och alternativ.</p>
+
+  <h2>1. Gör ett quiz</h2>
+  <ol>
+    <li>Tryck <b>+ Nytt quiz</b> i biblioteket och ge quizet ett namn.</li>
+    <li>Lägg till rundor. Varje runda är en av tre typer:
+      <ul>
+        <li><b>Textfrågor</b> – frågan visas som text. Bilder och fakta kan visas i facit.</li>
+        <li><b>Bildfrågor</b> – en bild visas, t.ex. ett skivomslag.</li>
+        <li><b>Låtar</b> – musiken spelas på storskärmen. Videobilden döljs tills facit. Det går lika bra med mp3/m4a.</li>
+      </ul></li>
+    <li>Skriv <b>rätt svar</b> och upp till tre <b>fel alternativ</b> för varje fråga. Alternativen blandas automatiskt.</li>
+    <li>Allt sparas automatiskt. Uppe till höger syns om något saknas innan quizet kan startas.</li>
+  </ol>
+  <p class="hint">Tips för låtar: spela upp filen i redigeraren, pausa där musiken ska börja och tryck <b>Sätt start här</b>.</p>
+
+  <h2>2. Kör quizet</h2>
+  <ol>
+    <li>Koppla datorn till projektorn eller tv:n och tryck <b>Starta</b> på quizet i biblioteket.</li>
+    <li>Tryck <kbd>F</kbd> för helskärm och <kbd>P</kbd> för att testa ljudet.</li>
+    <li>Gå vidare med <kbd>→</kbd> till välkomstsidan. Lagen skannar QR-koden med mobilen och skriver ett lagnamn.</li>
+    <li>Bläddra med <kbd>→</kbd> och <kbd>←</kbd>. Under en runda svarar lagen A–D. Svaren låses när rundans facit börjar.</li>
+    <li>På facitsidorna kan du klicka på ett lags svar för att ändra rätt/fel.</li>
+  </ol>
+
+  <h2>Anslutning för lagen</h2>
+  <div class="card">
+    <p style="margin-top:0"><b>Internetadress (standard):</b> När Musikquiz startar skapas en tillfällig adress hos Cloudflare (…trycloudflare.com). Då kan lagen ansluta från mobilnätet eller vilket wifi som helst. Adressen byts varje gång appen startas, men QR-koden på storskärmen visar alltid rätt adress.</p>
+    <p style="margin-bottom:0"><b>Wifi-läge (reserv):</b> Om internetadressen inte fungerar, t.ex. på ett nätverk som blockerar den, slår du på <b>Wifi-läge</b> i biblioteket. Då ansluter lagen direkt till datorn och måste vara på samma wifi. Datorn kan fråga om Musikquiz får ta emot anslutningar – svara Tillåt.</p>
+  </div>
+
+  <h2>Dela quiz med kollegor</h2>
+  <ul>
+    <li><b>Exportera</b> skapar en quizfil (<code>.musikquiz.zip</code>) med frågor och all media.</li>
+    <li>Kollegan trycker <b>Importera quizfil…</b>, eller drar in filen i biblioteket.</li>
+    <li>Tänk på att musik, videor och omslag är upphovsrättsskyddade. Det är okej att spela dem på en egen quizkväll, men dela inte quizfiler offentligt.</li>
+  </ul>
+
+  <h2>Bra att veta</h2>
+  <ul>
+    <li>Quizen sparas i mappen <b>Musikquiz</b> i din hemkatalog. Borttagna quiz hamnar i <b>Papperskorg</b> där.</li>
+    <li>Svar och poäng sparas hela tiden. Om datorn startas om kan du välja <b>Fortsätt</b> när du startar quizet igen.</li>
+    <li>Tryck <b>Avsluta Musikquiz</b> när du är klar. Har du bara stängt fliken avslutas appen av sig själv efter 15 minuter.</li>
+    <li>Använd Chrome eller Edge på datorn med storskärmen. Mobilerna fungerar med alla vanliga webbläsare.</li>
+  </ul>
+</div>
+<script>setInterval(() => fetch("/api/admin/ping").catch(() => {}), 60000);</script>
+</body>
+</html>
