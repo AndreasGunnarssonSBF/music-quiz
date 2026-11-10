@@ -144,7 +144,8 @@
   <select id="jump" title="Hoppa till"></select>
   <span class="info" id="info"></span>
   <span class="spacer"></span>
-  <span class="hint">← → navigera · P spela/pausa · F helskärm · H dölj rad</span>
+  <span class="hint">← → navigera · P spela/pausa · F helskärm · H dölj rad · E effekter</span>
+  <button class="btn ghost" id="fxBtn" title="Ljudeffekter mellan rundorna (E)">🔔</button>
   <button class="btn ghost" id="teamsBtn" title="Lag">Lag</button>
   <button class="btn ghost" id="libBtn" title="Tillbaka till biblioteket">Bibliotek</button>
   <button class="btn ghost" id="fs" title="Helskärm (F)">⛶</button>
@@ -160,6 +161,21 @@ const M = (f) => "/media/" + encodeURIComponent(f);
 const hue = (name) => [...String(name)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % 360;
 const teamLabel = (t) => `${t.emoji ? `<i class="em">${t.emoji}</i>` : ""}${esc(t.name)}`;
 let podStage = 0, boardKey = "";
+// Egna ljudeffekter (skapade av tools/make_sounds.py) – kan stängas av med 🔔 eller E.
+let fxOn = true;
+try { fxOn = localStorage.getItem("mq_fx") !== "0"; } catch (e) {}
+const FX = {};
+["runda", "trumvirvel", "ding", "vinnare"].forEach((n) => { const a = new Audio(`/static/sounds/${n}.wav`); a.preload = "auto"; FX[n] = a; });
+function playFx(n) {
+  if (!fxOn || !FX[n]) return;
+  const a = FX[n];
+  try { a.pause(); a.currentTime = 0; a.volume = 0.7; a.play().catch(() => {}); } catch (e) {}
+}
+function syncFx() {
+  const b = document.getElementById("fxBtn");
+  if (b) { b.textContent = fxOn ? "🔔" : "🔕"; b.title = fxOn ? "Ljudeffekter på – klicka för att stänga av (E)" : "Ljudeffekter av – klicka för att slå på (E)"; }
+}
+function toggleFx() { fxOn = !fxOn; try { localStorage.setItem("mq_fx", fxOn ? "1" : "0"); } catch (e) {} syncFx(); }
 const isAudio = (f) => /\.(mp3|m4a|aac|wav|ogg|oga|opus)$/i.test(f || "");
 const stage = $("#stage");
 let S = null, version = 0, renderedStep = -1, renderedKey = "", media = null, fadeTimer = null;
@@ -368,6 +384,8 @@ function renderSlide() {
   stage.innerHTML = html;
 
   if (s.kind === "lobby") drawQr();
+  if (s.kind === "round_intro") playFx("runda");
+  if (s.kind === "answers_intro") playFx("trumvirvel");
   if (s.kind === "soundcheck") setupMedia($("#aud"), { autoplay: false, volume: 0.8 });
   if (s.kind === "thanks" && $("#aud")) setupMedia($("#aud"), { volume: 1 });
   if (s.kind === "question" && r.type === "video") setupMedia($("#vid"), { trim: q.trim });
@@ -507,6 +525,8 @@ function teamPanel() {
   d.showModal();
 }
 $("#teamsBtn").addEventListener("click", teamPanel);
+$("#fxBtn").addEventListener("click", toggleFx);
+syncFx();
 
 // --- Kontroller ----------------------------------------------------------------
 function goNext() {
@@ -515,7 +535,8 @@ function goNext() {
     if (podStage < count) {
       podStage++;
       renderScores();
-      if (podStage === count) { confetti(); action({ action: "reveal" }); }
+      if (podStage === count) { confetti(); playFx("vinnare"); action({ action: "reveal" }); }
+      else playFx("ding");
       return;
     }
   }
@@ -539,6 +560,7 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "p" || e.key === "P") togglePlay();
   else if (e.key === "f" || e.key === "F") toggleFs();
   else if (e.key === "h" || e.key === "H") document.body.classList.toggle("presenting");
+  else if (e.key === "e" || e.key === "E") toggleFx();
 });
 poll();
 </script>

@@ -44,6 +44,8 @@ def check(name, ok):
 # Bibliotek och start
 s, info = call(ADMIN, "GET", "/api/admin/info")
 check("exempelquiz skapas", [q["id"] for q in info["quizzes"]] == ["exempelquiz"])
+ex = info["quizzes"][0]
+check("exempelquiz har låtrunda och är klart att starta", ex["rounds"] == 2 and not ex["problems"])
 check("CSRF-skydd", call(ADMIN, "POST", "/api/admin/start", {"id": "exempelquiz"})[0] == 403)
 check("Host-skydd", call(ADMIN, "GET", "/api/admin/info", headers={"Host": "evil.test"})[0] == 403)
 check("start", call(ADMIN, "POST", "/api/admin/start", {"id": "exempelquiz"}, H)[0] == 200)

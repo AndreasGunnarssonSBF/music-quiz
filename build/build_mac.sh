@@ -46,9 +46,34 @@ rm -rf "$DIST/Musikquiz.app" "$DIST/Musikquiz-mac.zip"
 # Ingen Dock-ikon: appen öppnar bara webbläsaren och avslutar sig.
 PLIST="$DIST/Musikquiz.app/Contents/Info.plist"
 plutil -replace LSUIElement -bool true "$PLIST"
-plutil -replace CFBundleShortVersionString -string "2.2" "$PLIST"
+plutil -replace CFBundleShortVersionString -string "2.3" "$PLIST"
 plutil -replace CFBundleDisplayName -string "Musikquiz" "$PLIST"
-codesign --force --deep --sign - "$DIST/Musikquiz.app"
+APP="$DIST/Musikquiz.app"
+
+if [[ -n "${MACOS_SIGN_IDENTITY:-}" ]]; then
+  # Riktig signering + notarisering (kräver Apple Developer-konto, se docs/signering.md).
+  # Då försvinner varningen vid första starten helt.
+  ENT="$ROOT/build/entitlements.plist"
+  echo "Signerar med: $MACOS_SIGN_IDENTITY"
+  # Inifrån och ut: bibliotek och körbara filer först, sist själva appen.
+  find "$APP/Contents" -type f \( -name "*.dylib" -o -name "*.so" -o -perm -u+x \) ! -path "*/MacOS/Musikquiz" -print0 |
+    while IFS= read -r -d '' f; do
+      codesign --force --timestamp --options runtime --entitlements "$ENT" --sign "$MACOS_SIGN_IDENTITY" "$f"
+    done
+  codesign --force --timestamp --options runtime --entitlements "$ENT" --sign "$MACOS_SIGN_IDENTITY" "$APP"
+  codesign --verify --strict --verbose=2 "$APP"
+  if [[ -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" && -n "${APPLE_APP_PASSWORD:-}" ]]; then
+    echo "Notariserar hos Apple (tar några minuter)…"
+    (cd "$DIST" && ditto -c -k --keepParent Musikquiz.app notarize.zip)
+    xcrun notarytool submit "$DIST/notarize.zip" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+      --password "$APPLE_APP_PASSWORD" --wait
+    xcrun stapler staple "$APP"
+    rm -f "$DIST/notarize.zip"
+  fi
+else
+  # Ingen certifikat: ad hoc-signering (fungerar, men macOS varnar första gången).
+  codesign --force --deep --sign - "$APP"
+fi
 
 # 5. Zip för utskick (ditto behåller behörigheter och symlänkar)
 (cd "$DIST" && ditto -c -k --sequesterRsrc --keepParent Musikquiz.app Musikquiz-mac.zip)

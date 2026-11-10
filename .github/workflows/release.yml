@@ -23,12 +23,35 @@ jobs:
   mac:
     needs: test
     runs-on: macos-latest
+    # Frivillig Apple-signering: lägg in hemligheterna enligt docs/signering.md.
+    # Saknas de byggs appen som vanligt (ad hoc-signerad).
+    env:
+      MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - name: Importera Apple-certifikat
+        if: ${{ env.MACOS_CERT_P12 != '' }}
+        run: |
+          KC="$RUNNER_TEMP/bygg.keychain-db"; KP="$(uuidgen)"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KP" "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p "$KP" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KP" "$KC" > /dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
       - name: Bygg
-        run: PYTHON="$(which python)" ./build/build_mac.sh
+        run: |
+          if [ -z "$MACOS_CERT_P12" ]; then unset MACOS_SIGN_IDENTITY; fi
+          PYTHON="$(which python)" ./build/build_mac.sh
       - uses: actions/upload-artifact@v4
         with: { name: Musikquiz-mac, path: dist/Musikquiz-mac.zip }
 

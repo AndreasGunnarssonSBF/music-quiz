@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import tempfile
 import time
 import unicodedata
@@ -229,7 +230,13 @@ class Library:
 
     # --- Exempel ----------------------------------------------------------------
     def create_example(self):
-        self.create("Exempelquiz", quiz=example_quiz())
+        qid = self.create("Exempelquiz", quiz=example_quiz())
+        # Melodierna till låtrundan är appens egna inspelningar av traditionella visor.
+        demo = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))), "static", "demo")
+        for name in EXAMPLE_SONGS:
+            src = os.path.join(demo, name + ".wav")
+            if os.path.isfile(src):
+                shutil.copy(src, os.path.join(self.media_dir(qid), name + ".wav"))
 
 
 # --- Hjälpfunktioner -------------------------------------------------------------
@@ -292,7 +299,26 @@ def example_quiz():
              "fact": "”Let It Be” gavs ut sist (1970), men ”Abbey Road” (1969) var det sista de spelade in."},
         ],
     }]
+    q["rounds"].append({
+        "title": "Gissa visan",
+        "type": "video",
+        "instruction": "Vilken visa är det?",
+        "questions": [{"video": name + ".wav", "options": [title] + wrong, "fact": fact}
+                      for name, (title, wrong, fact) in EXAMPLE_SONGS.items()],
+    })
     return q
+
+
+EXAMPLE_SONGS = {
+    "blinka-lilla-stjarna": ("Blinka lilla stjärna", ["Gubben Noak", "Små grodorna", "Mors lilla Olle"],
+                             "Melodin är en fransk folkvisa från 1700-talet. Mozart skrev variationer på den."),
+    "broder-jakob": ("Broder Jakob", ["Björnen sover", "Lille katt", "Små grodorna"],
+                     "En fransk kanon från 1700-talet – på franska ”Frère Jacques”."),
+    "imse-vimse-spindel": ("Imse vimse spindel", ["Huvud, axlar, knä och tå", "Mors lilla Olle", "Lille katt"],
+                           "På engelska heter den ”The Itsy Bitsy Spider”."),
+    "happy-birthday": ("Happy Birthday", ["Ja, må hon leva", "Björnen sover", "Gubben Noak"],
+                       "Melodin skrevs av systrarna Hill i USA 1893 och är i dag fri att använda."),
+}
 
 
 def used_media(quiz):

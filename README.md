@@ -2,7 +2,7 @@
 
 Ett musikquiz för fester och fredagsfika. Quizmastern visar quizet på storskärmen och lagen svarar A–D från sina mobiler, från vilket nät som helst. Du gör egna quiz med text, bilder och musikvideor direkt i appen och delar dem med andra som en quizfil.
 
-**[Ladda ner senaste versionen →](../../releases/latest)**. Installationen står på nedladdningssidan.
+**[Ladda ner senaste versionen →](../../releases/latest)** · **[Så installerar du (med bilder)](docs/installera.md)**
 
 ## Så fungerar det
 
@@ -18,7 +18,7 @@ Mer finns på hjälpsidan i appen (`/hjalp`).
 
 ## Upphovsrätt
 
-Appen innehåller ingen musik, inga videor och inga omslag. Ljudtestets slinga är egengjord (`tools/make_jingle.py`). Det du laddar upp i egna quiz ansvarar du själv för. Spela gärna låtar på en egen quizkväll, men dela inte quizfiler med upphovsrättsskyddat material offentligt.
+Appen innehåller ingen upphovsrättsskyddad musik, inga videor och inga omslag. Ljudtestets slinga, ljudeffekterna och exempelquizets melodier är egna inspelningar av traditionella visor, skapade med `tools/make_jingle.py` och `tools/make_sounds.py`. Det du laddar upp i egna quiz ansvarar du själv för. Spela gärna låtar på en egen quizkväll, men dela inte quizfiler med upphovsrättsskyddat material offentligt.
 
 ## Utveckling
 
@@ -52,7 +52,7 @@ git tag v2.0
 git push origin v2.0
 ```
 
-Zip-filerna hamnar under **Releases**. Lokalt bygger du med `build/build_mac.sh` (Mac) eller `build/build_windows.ps1` (Windows).
+Zip-filerna hamnar under **Releases**. Lokalt bygger du med `build/build_mac.sh` (Mac) eller `build/build_windows.ps1` (Windows). Mac-appen kan signeras och notariseras automatiskt, se [docs/signering.md](docs/signering.md).
 
 ## Tredjepartskomponenter
 

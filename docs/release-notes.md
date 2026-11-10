@@ -5,16 +5,10 @@
 | Mac med Apple-chip (M1 eller senare) | **Musikquiz-mac.zip** |
 | Windows 10/11 | **Musikquiz-windows.zip** |
 
-### Mac
-1. Packa upp zip-filen och flytta **Musikquiz** till mappen Program.
-2. Dubbelklicka på Musikquiz. Första gången säger macOS att appen inte kan kontrolleras – tryck **Klar**.
-3. Öppna **Systeminställningar → Integritet och säkerhet**, scrolla ner och tryck **Öppna ändå** vid Musikquiz.
-4. Webbläsaren öppnas med ditt quizbibliotek. Nästa gång räcker ett dubbelklick.
+**👉 [Steg-för-steg-guide med bilder](https://github.com/AndreasGunnarssonSBF/music-quiz/blob/main/docs/installera.md)**. Första gången varnar datorn eftersom appen inte är signerad. Guiden visar hur du går förbi varningen.
 
-### Windows
-1. Högerklicka på zip-filen → **Extrahera alla**. Lägg mappen **Musikquiz** t.ex. i Dokument.
-2. Dubbelklicka på **Musikquiz.exe** i mappen.
-3. Visar Windows ”Windows skyddade datorn” – tryck **Mer information → Kör ändå**.
-4. Webbläsaren öppnas med ditt quizbibliotek.
+**Kortversion**
+- **Mac:** packa upp zip-filen, flytta Musikquiz till Program och dubbelklicka. Tryck **Klar** i varningen. Gå sedan till **Systeminställningar → Integritet och säkerhet → Öppna ändå**.
+- **Windows:** högerklicka på zip-filen → **Extrahera alla**. Dubbelklicka på **Musikquiz.exe** och välj **Mer information → Kör ändå**.
 
-Appen är inte signerad hos Apple eller Microsoft, därför varningarna. Den innehåller ingen musik – alla laddar upp sitt eget material.
+Appen innehåller ingen upphovsrättsskyddad musik. Exempelquizet använder appens egna inspelningar av fria visor.

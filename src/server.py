@@ -26,7 +26,7 @@ import library
 from library import Library, check, prepare
 from tunnel import Tunnel, resource_dir
 
-APP_VERSION = "2.2"
+APP_VERSION = "2.3"
 STATIC_DIR = os.path.join(resource_dir(), "static")
 MAX_TEAMS = 80
 # Lagens symboler (väljs på mobilen när laget går med)
