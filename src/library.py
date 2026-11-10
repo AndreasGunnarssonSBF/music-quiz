@@ -92,6 +92,7 @@ class Library:
             "problems": check(quiz, d),
             "modified": os.path.getmtime(os.path.join(self.path(qid), "quiz.json")),
             "hasSaved": self.has_saved_game(qid),
+            "covers": cover_images(quiz, d),
             "aiUnchecked": sum(1 for r in rounds for q in (r.get("questions") or []) if q.get("ai")),
         }
 
@@ -307,6 +308,20 @@ def used_media(quiz):
                     out.add(q[key])
             out.update(x for x in (q.get("images") or []) if x)
     return {os.path.basename(str(x)) for x in out}
+
+
+def cover_images(quiz, media_dir, n=4):
+    """Upp till n bilder ur quizet till omslaget i biblioteket."""
+    out = []
+    for r in quiz.get("rounds") or []:
+        for q in r.get("questions") or []:
+            for f in [q.get("questionImage"), q.get("image"), q.get("answerImage")] + list(q.get("images") or []):
+                if f and f not in out and os.path.splitext(f)[1].lower() in IMAGE_EXT and os.path.isfile(os.path.join(media_dir, f)):
+                    out.append(f)
+                    break
+            if len(out) >= n:
+                return out
+    return out
 
 
 def upgrade_legacy(quiz, media_dir):

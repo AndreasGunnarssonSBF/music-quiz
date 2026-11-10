@@ -9,23 +9,49 @@
 <link rel="stylesheet" href="/static/style.css">
 <link rel="stylesheet" href="/static/app.css">
 <style>
-  .conn { padding: 16px 18px; display: grid; grid-template-columns: 1fr auto; gap: 10px 18px; align-items: center; }
-  .conn .addr { font-weight: 700; word-break: break-all; }
-  .conn .sub { font-size: 14px; color: var(--muted); line-height: 1.45; }
-  .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 600; user-select: none; }
-  .switch input { width: 18px; height: 18px; accent-color: var(--pink); }
-  .active { padding: 14px 18px; margin-top: 14px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  .topbar .pill { cursor: pointer; }
+  .topbar .pill:hover { border-color: var(--cyan); }
+  .welcome { padding: 24px; margin-bottom: 26px; position: relative; overflow: hidden;
+             border-color: rgba(255,63,180,.55); background: linear-gradient(120deg, rgba(255,63,180,.12), rgba(139,92,255,.10) 50%, rgba(47,214,255,.08)); }
+  .welcome h2 { font-size: 40px; margin: 0 40px 4px 0; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+  .stp { padding: 16px; border-radius: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--panel-line); display: flex; flex-direction: column; gap: 8px; }
+  .stp .n { font-family: var(--display); font-size: 34px; line-height: 1; color: var(--cyan); }
+  .stp > b { font-size: 17px; }
+  .stp p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; flex: 1; }
+  .welcome .close { position: absolute; top: 14px; right: 14px; }
+  .active { padding: 14px 18px; margin-bottom: 22px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
             border-color: rgba(255,63,180,.7); box-shadow: 0 0 22px rgba(255,63,180,.25); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
-  .qc { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
-  .qc h3 { margin: 0; font-size: 22px; line-height: 1.2; word-break: break-word; }
-  .qc .meta { font-size: 14px; color: var(--muted); }
-  .qc .warn { font-size: 13px; color: #ffc94d; }
-  .qc .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
-  .empty { padding: 28px; text-align: center; color: var(--muted); }
-  .foot { margin-top: 40px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 14px; }
+  .head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .head h2 { margin: 0; flex: 1; font-size: 34px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .qc { overflow: hidden; display: flex; flex-direction: column; transition: transform .15s, border-color .15s; }
+  .qc:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.28); }
+  .cover { aspect-ratio: 16 / 9; display: grid; gap: 2px; background: #000; overflow: hidden; }
+  .cover.n1 { grid-template-columns: 1fr; }
+  .cover.n2 { grid-template-columns: 1fr 1fr; }
+  .cover.n3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+  .cover.n3 img:first-child { grid-row: span 2; }
+  .cover.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; min-height: 0; }
+  .cover.empty { display: flex; align-items: center; justify-content: center; font-size: 56px;
+                 background: radial-gradient(circle at 30% 20%, rgba(255,63,180,.45), transparent 60%), radial-gradient(circle at 80% 90%, rgba(47,214,255,.35), transparent 55%), #1a0f33; }
+  .qb { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .qb h3 { margin: 0; font-size: 21px; line-height: 1.2; word-break: break-word; }
+  .qb .meta { font-size: 14px; color: var(--muted); }
+  .qb .acts { display: flex; gap: 8px; margin-top: auto; padding-top: 8px; }
+  .qb .acts .main { flex: 1; text-align: center; }
+  .btn.todo { background: rgba(255,201,77,.14); border: 1px solid rgba(255,201,77,.55); color: #ffe7a6; box-shadow: none; }
+  .empty-lib { padding: 34px; text-align: center; color: var(--muted); }
+  .foot { margin-top: 40px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
   .drop { outline: 3px dashed var(--cyan); outline-offset: 6px; border-radius: 16px; }
-  @media (max-width: 640px) { .conn { grid-template-columns: 1fr; } }
+  .menu { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .menu .btn { text-align: left; }
+  .conninfo { line-height: 1.55; }
+  .conninfo .addr { font-weight: 700; word-break: break-all; color: var(--text); }
+  .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; user-select: none; }
+  .switch input { width: 18px; height: 18px; accent-color: var(--pink); }
+  @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } .welcome h2 { font-size: 32px; } }
 </style>
 </head>
 <body>
@@ -33,37 +59,39 @@
   <div class="topbar">
     <a class="logo display grad" href="/">Musikquiz</a>
     <span class="spacer"></span>
+    <span class="pill" id="conn" title="Hur lagen ansluter"><span class="dot" id="cdot"></span><span id="ctext">…</span></span>
     <a class="btn ghost sm" href="/hjalp">Hjälp</a>
-    <button class="btn ghost sm" id="quit">Avsluta Musikquiz</button>
+    <button class="btn ghost sm" id="quit">Avsluta</button>
   </div>
 
-  <div class="conn card" id="conn">
-    <div>
-      <div class="row"><span class="dot" id="cdot"></span><b id="ctitle">Startar…</b></div>
-      <div class="sub" id="csub"></div>
-    </div>
-    <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost xs hidden" id="retry">Försök igen</button>
-      <label class="switch" title="Lagen kan ansluta direkt till den här datorn om de är på samma wifi"><input type="checkbox" id="lan"> Wifi-läge</label>
+  <div class="welcome card hidden" id="welcome">
+    <button class="iconbtn close" id="welcomeClose" title="Dölj guiden">✕</button>
+    <div class="kicker" style="font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);font-size:13px">Kom igång</div>
+    <h2 class="display grad">Ditt första musikquiz på tre steg</h2>
+    <div class="steps">
+      <div class="stp"><span class="n">1</span><b>Gör frågorna</b><p>Låt AI:n skriva ett helt quiz åt dig utifrån ett tema – eller börja från noll.</p>
+        <div class="row"><button class="btn sm" data-go="ai">✨ Skapa med AI</button><button class="btn ghost sm" data-go="new">Nytt quiz</button></div></div>
+      <div class="stp"><span class="n">2</span><b>Lägg till musiken</b><p>Dra in alla låtar på en gång i redigeraren. Döp filerna till <i>Artist - Låttitel</i> så fylls svaren i automatiskt.</p></div>
+      <div class="stp"><span class="n">3</span><b>Kör!</b><p>Koppla datorn till tv:n och tryck <b>Starta</b>. Lagen skannar QR-koden med mobilen – ingen app, inget konto.</p>
+        <div class="row"><button class="btn ghost sm" data-go="try">Prova exempelquizet</button></div></div>
     </div>
   </div>
 
   <div class="active card hidden" id="active"></div>
 
-  <div class="row" style="margin-top:26px">
-    <h2 class="sec grow" style="margin:0">Dina quiz</h2>
+  <div class="head">
+    <h2 class="display">Dina quiz</h2>
     <button class="btn sm" id="new">+ Nytt quiz</button>
     <button class="btn ghost sm" id="aiNew">✨ Skapa med AI</button>
-    <button class="btn ghost sm" id="import">Importera quizfil…</button>
+    <button class="btn ghost sm" id="import" title="Öppna en .musikquiz.zip som någon delat med dig">Importera…</button>
     <input type="file" id="importFile" accept=".zip,application/zip" class="hidden">
   </div>
-  <p class="lead" style="margin-top:8px">En quizfil (<code>.musikquiz.zip</code>) innehåller frågorna och all media. Dela den med kollegor via OneDrive eller Teams – de importerar den här.</p>
   <div class="grid" id="list"></div>
 
   <div class="foot">
     <span>Quizen sparas i <a href="#" id="folder"></a></span>
     <span class="grow"></span>
-    <span id="ver"></span>
+    <span>Dela ett quiz: <b>…</b> → Exportera, och skicka filen · </span><span id="ver"></span>
   </div>
 </div>
 
@@ -74,6 +102,7 @@
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 let INFO = null;
 
 async function api(path, body) {
@@ -87,22 +116,24 @@ function toast(msg, bad) {
   const t = $("#toast"); t.textContent = msg; t.className = "toast" + (bad ? " bad" : "");
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hidden"), bad ? 6000 : 3000);
 }
-function dialog(title, html, buttons) {
+function dialog(title, html, buttons, onOpen) {
   return new Promise((resolve) => {
     const d = $("#dlg");
+    let value = null;
     $("#dlgTitle").textContent = title;
     $("#dlgBody").innerHTML = html;
     $("#dlgBtns").innerHTML = "";
-    buttons.forEach(([label, value, cls]) => {
+    buttons.forEach(([label, v, cls]) => {
       const b = document.createElement("button");
       b.className = "btn sm " + (cls || "");
       b.textContent = label;
-      b.onclick = () => { d.close(); resolve(value); };
+      b.onclick = () => { value = v; d.close(); };
       $("#dlgBtns").appendChild(b);
     });
-    d.onclose = () => resolve(d.returnValue === "" ? null : null);
+    d.onclose = () => resolve(value);
     d.showModal();
-    const inp = d.querySelector("input"); if (inp) inp.focus();
+    if (onOpen) onOpen(d, (v) => { value = v; d.close(); });
+    const inp = d.querySelector("input.t"); if (inp) inp.focus();
   });
 }
 const mb = (n) => n > 1e9 ? (n / 1e9).toFixed(1) + " GB" : n > 1e6 ? Math.round(n / 1e6) + " MB" : n > 0 ? Math.max(1, Math.round(n / 1e3)) + " kB" : "ingen media";
@@ -113,70 +144,91 @@ async function load() {
   render();
 }
 
-function renderConn() {
+// --- Anslutning: liten statusmarkering, detaljer i en dialog ------------------------------
+function connState() {
   const c = INFO.conn, t = c.tunnel;
-  const dot = $("#cdot"), title = $("#ctitle"), sub = $("#csub");
-  dot.className = "dot"; $("#retry").classList.add("hidden");
-  if (t.status === "ready") {
-    dot.classList.add("ok");
-    title.innerHTML = `Lagen kan ansluta från vilket nät som helst`;
-    sub.innerHTML = `Tillfällig internetadress: <span class="addr">${esc(t.url.replace("https://", ""))}</span><br>Adressen byts varje gång Musikquiz startas – QR-koden på storskärmen visar alltid den rätta.`;
-  } else if (t.status === "starting") {
-    dot.classList.add("warn", "pulse");
-    title.textContent = "Startar internetadress…";
-    sub.textContent = "Det tar oftast 5–15 sekunder.";
-  } else {
-    dot.classList.add("bad");
-    title.textContent = t.status === "missing" ? "Internetadress saknas" : "Internetadressen fungerar inte just nu";
-    sub.innerHTML = esc(t.error || "") + (c.lan ? `<br>Wifi-läget är på: lagen ansluter via <span class="addr">${esc(c.lanUrl)}</span>` : "<br>Slå på wifi-läget om lagen är på samma wifi som den här datorn.");
-    if (t.status !== "missing") $("#retry").classList.remove("hidden");
-  }
-  if (t.status === "ready" && c.lan && c.lanUrl) sub.innerHTML += `<br>Wifi-läge: <span class="addr">${esc(c.lanUrl)}</span>`;
-  $("#lan").checked = c.lan;
+  if (t.status === "ready") return { cls: "ok", text: "Lagen kan ansluta" };
+  if (c.lan && c.lanUrl) return { cls: "ok", text: "Wifi-läge" };
+  if (t.status === "failed" || t.status === "missing") return { cls: "bad", text: "Ingen adress för lagen" };
+  return { cls: "warn pulse", text: "Startar adress…" };
 }
+function renderConn() {
+  const s = connState();
+  $("#cdot").className = "dot " + s.cls;
+  $("#ctext").textContent = s.text;
+}
+function connHtml() {
+  const c = INFO.conn, t = c.tunnel;
+  let main;
+  if (t.status === "ready") main = `<p>✓ Lagen kan ansluta från <b>vilket nät som helst</b> – mobilnät eller valfritt wifi. QR-koden på storskärmen leder rätt.</p><p class="hint">Tillfällig adress: <span class="addr">${esc(t.url.replace("https://", ""))}</span>. Den byts varje gång Musikquiz startas.</p>`;
+  else if (t.status === "failed" || t.status === "missing") main = `<p>Internetadressen fungerar inte just nu.</p><p class="hint">${esc(t.error || "")}</p><p>Slå på <b>wifi-läget</b> om lagen är på samma wifi som den här datorn.</p>`;
+  else main = `<p>Internetadressen startar – det tar oftast 5–15 sekunder.</p>`;
+  return `<div class="conninfo">${main}
+    <p style="margin-top:16px"><label class="switch"><input type="checkbox" id="lanSw" ${c.lan ? "checked" : ""}> Wifi-läge</label><br>
+    <span class="hint">Reserv: lagen ansluter direkt till den här datorn och måste vara på samma wifi.${c.lan && c.lanUrl ? ` Adress: <span class="addr">${esc(c.lanUrl)}</span>` : ""}</span></p></div>`;
+}
+$("#conn").onclick = () => dialog("Hur lagen ansluter", connHtml(),
+  INFO.conn.tunnel.status === "failed" ? [["Försök igen", "retry", "ghost"], ["Stäng", null]] : [["Stäng", null]],
+  (d) => {
+    d.querySelector("#lanSw").onchange = async (e) => {
+      try { INFO.conn = await api("/api/admin/lan", { enabled: e.target.checked }); renderConn(); d.querySelector("#dlgBody").innerHTML = connHtml(); }
+      catch (err) { toast(err.message, true); }
+    };
+  }).then(async (v) => { if (v === "retry") { await api("/api/admin/tunnel/restart"); toast("Startar om internetadressen…"); setTimeout(load, 800); } });
 
+// --- Biblioteket --------------------------------------------------------------------------
+function coverHtml(q) {
+  const c = (q.covers || []).slice(0, 4);
+  if (!c.length) return `<div class="cover empty">${q.rounds && q.questions ? "🎵" : "✨"}</div>`;
+  return `<div class="cover n${c.length}">${c.map((f) => `<img src="/qmedia/${encodeURIComponent(q.id)}/${encodeURIComponent(f)}" alt="" loading="lazy">`).join("")}</div>`;
+}
+function mainAction(q) {
+  if (q.id === INFO.active) return `<a class="btn sm main" href="/host">Till storskärmen</a>`;
+  if (q.problems.length) return `<a class="btn sm main todo" href="/edit?id=${encodeURIComponent(q.id)}">Gör klart – ${q.problems.length} ${q.problems.length === 1 ? "sak" : "saker"} kvar</a>`;
+  return `<button class="btn sm main" data-a="start">▶ Starta</button>`;
+}
 function render() {
   renderConn();
   $("#folder").textContent = INFO.folder;
   $("#ver").textContent = `Musikquiz ${INFO.version}`;
+  // Guiden visas tills man stänger den eller skapar sitt första quiz.
+  $("#welcome").classList.toggle("hidden", store.get("mq_welcome_done") === "1");
+
   const act = INFO.quizzes.find((q) => q.id === INFO.active);
   $("#active").classList.toggle("hidden", !act);
-  if (act) $("#active").innerHTML = `<span class="dot ok pulse"></span><div class="grow"><b>Pågående quiz:</b> ${esc(act.title)}</div>
-    <a class="btn sm" href="/host">Till storskärmen</a><button class="btn ghost sm" id="stop">Avsluta quizet</button>`;
-  if (act) $("#stop").onclick = async () => {
-    const ok = await dialog("Avsluta quizet?", "<p>Lagen kopplas bort. Svar och poäng sparas, så du kan fortsätta senare.</p>", [["Avbryt", false, "ghost"], ["Avsluta quizet", true]]);
-    if (ok) { await api("/api/admin/stop"); load(); }
-  };
+  if (act) {
+    $("#active").innerHTML = `<span class="dot ok pulse"></span><div class="grow"><b>Pågår just nu:</b> ${esc(act.title)}</div>
+      <a class="btn sm" href="/host">Till storskärmen</a><button class="btn ghost sm" id="stop">Avsluta quizet</button>`;
+    $("#stop").onclick = async () => {
+      const ok = await dialog("Avsluta quizet?", "<p>Lagen kopplas bort. Svar och poäng sparas, så du kan fortsätta senare.</p>", [["Avbryt", false, "ghost"], ["Avsluta quizet", true]]);
+      if (ok) { await api("/api/admin/stop"); load(); }
+    };
+  }
 
   const list = $("#list");
-  if (!INFO.quizzes.length) { list.innerHTML = `<div class="card empty">Inga quiz ännu. Skapa ett nytt eller importera en quizfil.</div>`; return; }
+  if (!INFO.quizzes.length) { list.innerHTML = `<div class="card empty-lib">Inga quiz ännu. Skapa ett nytt, låt AI:n göra ett, eller importera en quizfil.</div>`; return; }
   list.innerHTML = INFO.quizzes.map((q) => `
     <div class="card qc" data-id="${esc(q.id)}">
-      <h3>${esc(q.title)}</h3>
-      <div class="meta">${q.rounds} ${q.rounds === 1 ? "runda" : "rundor"} · ${q.questions} frågor · ${mb(q.bytes)}</div>
-      ${q.problems.length ? `<div class="warn">⚠ ${q.problems.length} ${q.problems.length === 1 ? "sak" : "saker"} att fixa innan start</div>` : ""}
-      ${q.aiUnchecked ? `<div class="meta"><span class="badge-ai">AI</span> ${q.aiUnchecked} ${q.aiUnchecked === 1 ? "fråga" : "frågor"} att kontrollera</div>` : ""}
-      <div class="acts">
-        <button class="btn sm" data-a="start">${q.id === INFO.active ? "Öppna" : "Starta"}</button>
-        <a class="btn ghost sm" href="/edit?id=${encodeURIComponent(q.id)}">Redigera</a>
-        <a class="btn ghost sm" href="/api/admin/export?id=${encodeURIComponent(q.id)}" download>Exportera</a>
-        <button class="btn ghost sm" data-a="more" title="Fler val">…</button>
+      ${coverHtml(q)}
+      <div class="qb">
+        <h3>${esc(q.title)}</h3>
+        <div class="meta">${q.rounds} ${q.rounds === 1 ? "runda" : "rundor"} · ${q.questions} frågor · ${mb(q.bytes)}</div>
+        ${q.aiUnchecked ? `<div class="meta"><span class="badge-ai">AI</span> ${q.aiUnchecked} ${q.aiUnchecked === 1 ? "fråga" : "frågor"} att kontrollera</div>` : ""}
+        <div class="acts">
+          ${mainAction(q)}
+          <a class="btn ghost sm" href="/edit?id=${encodeURIComponent(q.id)}">Redigera</a>
+          <button class="btn ghost sm" data-a="more" title="Exportera, duplicera, ta bort">…</button>
+        </div>
       </div>
     </div>`).join("");
   list.querySelectorAll(".qc").forEach((card) => {
     const q = INFO.quizzes.find((x) => x.id === card.dataset.id);
-    card.querySelector('[data-a="start"]').onclick = () => start(q);
+    const st = card.querySelector('[data-a="start"]'); if (st) st.onclick = () => start(q);
     card.querySelector('[data-a="more"]').onclick = () => more(q);
   });
 }
 
 async function start(q) {
-  if (q.id === INFO.active) { location.href = "/host"; return; }
-  if (q.problems.length) {
-    await dialog("Quizet är inte klart", `<p>Rätta det här i redigeraren först:</p><ul class="problems">${q.problems.slice(0, 12).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>`,
-      [["Stäng", false, "ghost"]]).then(() => {});
-    return;
-  }
   let resume = false;
   if (INFO.active) {
     const ok = await dialog("Ett annat quiz pågår", "<p>Om du startar det här quizet avslutas det pågående. Dess svar och poäng sparas.</p>", [["Avbryt", false, "ghost"], ["Starta ändå", true]]);
@@ -184,18 +236,27 @@ async function start(q) {
   }
   if (q.hasSaved) {
     const v = await dialog("Fortsätta där du slutade?", "<p>Det finns ett sparat spel för det här quizet med lag och poäng.</p><p class='hint'>Lagen kan behöva ansluta på nytt om internetadressen har bytts sedan dess.</p>",
-      [["Avbryt", null, "ghost"], ["Börja om från början", "new", "ghost"], ["Fortsätt", "resume"]]);
+      [["Avbryt", null, "ghost"], ["Börja om", "new", "ghost"], ["Fortsätt", "resume"]]);
     if (!v) return;
     resume = v === "resume";
   }
   try { await api("/api/admin/start", { id: q.id, resume }); location.href = "/host"; }
-  catch (e) { toast(e.message, true); }
+  catch (e) {
+    if (e.data && e.data.problems) location.href = "/edit?id=" + encodeURIComponent(q.id);
+    else toast(e.message, true);
+  }
 }
 
 async function more(q) {
-  const v = await dialog(q.title, `<p class="hint">Mapp: ${esc(INFO.folder)}/Quiz/${esc(q.id)}</p>`,
-    [["Visa mappen", "folder", "ghost"], ["Duplicera", "dup", "ghost"], ["Ta bort…", "del", "danger"], ["Stäng", null, "ghost"]]);
+  const v = await dialog(q.title, `<div class="menu">
+      <button class="btn ghost sm" data-v="export">⬇ Exportera quizfil <span class="muted" style="font-weight:400">– för att dela</span></button>
+      <button class="btn ghost sm" data-v="dup">⧉ Duplicera</button>
+      <button class="btn ghost sm" data-v="folder">📁 Visa mappen</button>
+      <button class="btn danger sm" data-v="del">🗑 Ta bort…</button></div>`,
+    [["Stäng", null, "ghost"]],
+    (d, close) => d.querySelectorAll("[data-v]").forEach((b) => b.onclick = () => close(b.dataset.v)));
   try {
+    if (v === "export") { location.href = "/api/admin/export?id=" + encodeURIComponent(q.id); toast("Quizfilen hamnar i Hämtade filer."); }
     if (v === "folder") await api("/api/admin/open-folder", { id: q.id });
     if (v === "dup") { await api("/api/admin/quiz/duplicate", { id: q.id }); toast("Kopian är skapad."); load(); }
     if (v === "del") {
@@ -205,43 +266,59 @@ async function more(q) {
   } catch (e) { toast(e.message, true); }
 }
 
-$("#new").onclick = async () => {
-  const ok = await dialog("Nytt quiz", `<label class="f" for="nt">Vad ska quizet heta?</label><input class="t" id="nt" maxlength="120" placeholder="T.ex. Fredagsquiz – 80-talet">`, [["Avbryt", false, "ghost"], ["Skapa", true]]);
+async function newQuiz() {
+  let title = null;
+  const ok = await dialog("Nytt quiz", `<label class="f" for="nt">Vad ska quizet heta?</label><input class="t" id="nt" maxlength="120" placeholder="T.ex. Fredagsquiz – 80-talet">`,
+    [["Avbryt", false, "ghost"], ["Skapa", true]],
+    (d, close) => { const i = d.querySelector("#nt"); i.oninput = () => (title = i.value); i.onkeydown = (e) => { if (e.key === "Enter") close(true); }; });
   if (!ok) return;
-  const title = ($("#nt") || {}).value || "Nytt quiz";
-  try { const d = await api("/api/admin/quiz/new", { title }); location.href = "/edit?id=" + encodeURIComponent(d.id); }
+  store.set("mq_welcome_done", "1");
+  try { const d = await api("/api/admin/quiz/new", { title: title || "Nytt quiz" }); location.href = "/edit?id=" + encodeURIComponent(d.id); }
   catch (e) { toast(e.message, true); }
-};
-$("#aiNew").onclick = () => AI.open({
-  title: "Skapa quiz med AI",
-  intro: "Du behöver inget konto i appen. Instruktionen kopieras till Claude eller ChatGPT, och svaret klistras tillbaka här. AI:n skriver frågor, svarsalternativ och fakta. Musik och bilder lägger du in själv efteråt – dra in alla filer på en gång i redigeraren.",
-  formHtml: `
-    <div class="field"><label class="f" for="aiTheme">Tema</label><input class="t" id="aiTheme" name="theme" required maxlength="200" placeholder="T.ex. 80-talets svenska pop, Eurovision, filmmusik"></div>
-    <div class="grid2">
-      <div class="field"><label class="f" for="aiRounds">Antal rundor</label><select class="t" id="aiRounds" name="rounds">${[1,2,3,4,5,6].map((n) => `<option ${n === 3 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
-      <div class="field"><label class="f" for="aiPer">Frågor per runda</label><select class="t" id="aiPer" name="perRound">${[5,6,8,10,12,15].map((n) => `<option ${n === 8 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
-    </div>
-    <div class="field"><span class="f">Rundtyper (växlar mellan de valda)</span>
-      <label class="chk"><input type="checkbox" name="types" value="trivia" checked> Textfrågor</label>
-      <label class="chk"><input type="checkbox" name="types" value="video" checked> Låtar – gissa artisten</label>
-      <label class="chk"><input type="checkbox" name="types" value="image"> Skivomslag</label></div>
-    <div class="grid2">
-      <div class="field"><label class="f" for="aiLevel">Svårighetsgrad</label><select class="t" id="aiLevel" name="level"><option>lätt</option><option selected>medel</option><option>svår</option><option>blandat, från lätt till svårt</option></select></div>
-      <div class="field"><label class="f" for="aiAud">Publik <span class="muted" style="font-weight:400">(valfri)</span></label><input class="t" id="aiAud" name="audience" placeholder="T.ex. kollegor 25–65 år"></div>
-    </div>
-    <div class="field"><label class="f" for="aiExtra">Övriga önskemål <span class="muted" style="font-weight:400">(valfritt)</span></label><textarea class="t" id="aiExtra" name="extra" rows="2" placeholder="T.ex. bara svenska artister, inga låtar efter 1995"></textarea></div>`,
-  getPrompt: (f) => {
-    const fd = new FormData(f);
-    return AI.quizPrompt({ theme: fd.get("theme") || "(skriv ett tema)", rounds: +fd.get("rounds"), perRound: +fd.get("perRound"),
-      types: fd.getAll("types"), level: fd.get("level"), audience: fd.get("audience"), extra: fd.get("extra") });
-  },
-  applyLabel: "Skapa quizet",
-  apply: async (json) => {
-    const quiz = AI.toQuiz(json);
-    const d = await api("/api/admin/quiz/new", { title: quiz.title, quiz });
-    location.href = "/edit?id=" + encodeURIComponent(d.id);
-  },
+}
+function aiQuiz() {
+  AI.open({
+    title: "Skapa quiz med AI",
+    intro: "Du behöver inget konto i appen. Instruktionen kopieras till Claude eller ChatGPT, och svaret klistras tillbaka här. AI:n skriver frågor, svarsalternativ och fakta. Musik och bilder lägger du in själv efteråt – dra in alla filer på en gång i redigeraren.",
+    formHtml: `
+      <div class="field"><label class="f" for="aiTheme">Tema</label><input class="t" id="aiTheme" name="theme" required maxlength="200" placeholder="T.ex. 80-talets svenska pop, Eurovision, filmmusik"></div>
+      <div class="grid2">
+        <div class="field"><label class="f" for="aiRounds">Antal rundor</label><select class="t" id="aiRounds" name="rounds">${[1,2,3,4,5,6].map((n) => `<option ${n === 3 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+        <div class="field"><label class="f" for="aiPer">Frågor per runda</label><select class="t" id="aiPer" name="perRound">${[5,6,8,10,12,15].map((n) => `<option ${n === 8 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+      </div>
+      <div class="field"><span class="f">Rundtyper (växlar mellan de valda)</span>
+        <label class="chk"><input type="checkbox" name="types" value="trivia" checked> Textfrågor</label>
+        <label class="chk"><input type="checkbox" name="types" value="video" checked> Låtar – gissa artisten</label>
+        <label class="chk"><input type="checkbox" name="types" value="image"> Skivomslag</label></div>
+      <div class="grid2">
+        <div class="field"><label class="f" for="aiLevel">Svårighetsgrad</label><select class="t" id="aiLevel" name="level"><option>lätt</option><option selected>medel</option><option>svår</option><option>blandat, från lätt till svårt</option></select></div>
+        <div class="field"><label class="f" for="aiAud">Publik <span class="muted" style="font-weight:400">(valfri)</span></label><input class="t" id="aiAud" name="audience" placeholder="T.ex. kollegor 25–65 år"></div>
+      </div>
+      <div class="field"><label class="f" for="aiExtra">Övriga önskemål <span class="muted" style="font-weight:400">(valfritt)</span></label><textarea class="t" id="aiExtra" name="extra" rows="2" placeholder="T.ex. bara svenska artister, inga låtar efter 1995"></textarea></div>`,
+    getPrompt: (f) => {
+      const fd = new FormData(f);
+      return AI.quizPrompt({ theme: fd.get("theme") || "(skriv ett tema)", rounds: +fd.get("rounds"), perRound: +fd.get("perRound"),
+        types: fd.getAll("types"), level: fd.get("level"), audience: fd.get("audience"), extra: fd.get("extra") });
+    },
+    applyLabel: "Skapa quizet",
+    apply: async (json) => {
+      const quiz = AI.toQuiz(json);
+      const d = await api("/api/admin/quiz/new", { title: quiz.title, quiz });
+      store.set("mq_welcome_done", "1");
+      location.href = "/edit?id=" + encodeURIComponent(d.id);
+    },
+  });
+}
+$("#new").onclick = newQuiz;
+$("#aiNew").onclick = aiQuiz;
+document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => {
+  const g = b.dataset.go;
+  if (g === "ai") aiQuiz();
+  if (g === "new") newQuiz();
+  if (g === "try") { const ex = INFO.quizzes.find((q) => q.id === "exempelquiz"); if (ex) start(ex); else toast("Exempelquizet finns inte längre.", true); }
 });
+$("#welcomeClose").onclick = () => { store.set("mq_welcome_done", "1"); $("#welcome").classList.add("hidden"); };
+
 $("#import").onclick = () => $("#importFile").click();
 $("#importFile").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) importFile(f); };
 async function importFile(f) {
@@ -253,7 +330,6 @@ async function importFile(f) {
     toast("Quizet är importerat."); load();
   } catch (e) { toast(e.message, true); }
 }
-// Dra och släpp en quizfil på sidan
 document.addEventListener("dragover", (e) => { e.preventDefault(); $("#app").classList.add("drop"); });
 document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) $("#app").classList.remove("drop"); });
 document.addEventListener("drop", (e) => {
@@ -261,11 +337,6 @@ document.addEventListener("drop", (e) => {
   const f = e.dataTransfer.files[0]; if (f && /\.zip$/i.test(f.name)) importFile(f); else if (f) toast("Dra in en quizfil (.zip).", true);
 });
 
-$("#lan").onchange = async (e) => {
-  try { INFO.conn = await api("/api/admin/lan", { enabled: e.target.checked }); renderConn(); }
-  catch (err) { toast(err.message, true); }
-};
-$("#retry").onclick = async () => { await api("/api/admin/tunnel/restart"); setTimeout(load, 500); };
 $("#folder").onclick = (e) => { e.preventDefault(); api("/api/admin/open-folder"); };
 $("#quit").onclick = async () => {
   const ok = await dialog("Avsluta Musikquiz?", "<p>Internetadressen stängs och lagen kopplas bort. Dina quiz och sparade spel finns kvar.</p>", [["Avbryt", false, "ghost"], ["Avsluta", true]]);
@@ -274,14 +345,14 @@ $("#quit").onclick = async () => {
   document.body.innerHTML = `<div class="wrap" style="text-align:center;padding-top:20vh"><h1 class="page display grad">Musikquiz är avslutat</h1><p class="lead">Du kan stänga den här fliken. Starta appen igen när du vill köra nästa quiz.</p></div>`;
 };
 
-// Uppdatera anslutningsstatus medan internetadressen startar, och håll appen vid liv.
+// Håll statusen aktuell (och appen vid liv) medan sidan är öppen.
 setInterval(async () => {
   try {
     const r = await fetch("/api/admin/info", { cache: "no-store" });
     const d = await r.json();
     const changed = JSON.stringify([d.conn, d.active]) !== JSON.stringify([INFO.conn, INFO.active]);
     INFO = d;
-    if (changed) render();
+    if (changed && !$("#dlg").open) render();
   } catch (e) {}
 }, 4000);
 load();

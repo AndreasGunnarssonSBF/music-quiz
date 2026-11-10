@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/static/fonts/fonts.css">
 <link rel="icon" href="/static/icon.svg">
 <link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/app.css">
 <script src="/static/qrcode.js"></script>
 <style>
   html, body { overflow: hidden; }
@@ -29,7 +30,25 @@
   .qr img, .qr svg { width: 100%; height: 100%; image-rendering: pixelated; }
   .url { font-size: clamp(20px, 3.6vh, 44px); font-weight: 700; margin-top: 1.6vh; word-break: break-all; }
   .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 2vh; max-height: 30vh; overflow: hidden; }
-  .chip { padding: 8px 16px; border-radius: 999px; background: var(--panel); border: 1px solid var(--panel-line); font-weight: 600; font-size: clamp(14px, 2vh, 22px); animation: pop .35s ease-out; }
+  .chip { padding: 8px 16px; border-radius: 999px; background: hsla(var(--h), 80%, 60%, .14); border: 1px solid hsla(var(--h), 85%, 65%, .6); font-weight: 600; font-size: clamp(14px, 2vh, 22px); animation: pop .35s ease-out; }
+  .em { font-style: normal; margin-right: .3em; }
+  /* Ställning: raderna glider in nerifrån och upp */
+  .brow.enter { opacity: 0; animation: rowin .5s ease-out forwards; }
+  @media (prefers-reduced-motion: reduce) { .brow.enter { animation: none; opacity: 1; } .pod .blk { transition: none; } }
+  @keyframes rowin { from { opacity: 0; transform: translateX(-40px) } to { opacity: 1; transform: none } }
+  /* Prispall som avslöjas plats för plats */
+  .pod .nm, .pod .pt { transition: opacity .5s, transform .5s; }
+  .pod.hide .nm, .pod.hide .pt { opacity: 0; transform: translateY(10px); }
+  .pod .blk { transition: height .8s cubic-bezier(.2,1.4,.4,1), filter .5s; }
+  .pod.hide .blk { filter: grayscale(1) brightness(.45); }
+  .pod.win .nm { font-size: clamp(24px, 4.4vh, 52px); }
+  .podhint { color: var(--muted); font-size: clamp(14px, 2vh, 20px); margin-top: 1vh; min-height: 1.4em; }
+  .board.small .brow { font-size: clamp(14px, 2.2vh, 24px); padding: .6vh 1.4vw; }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+  /* Lagpanel */
+  .teamlist { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; margin: 10px 0; }
+  .teamrow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--panel-line); }
+  .teamrow .nm { flex: 1; font-weight: 600; }
   @keyframes pop { from { transform: scale(.6); opacity: 0 } }
 
   /* Listor */
@@ -131,11 +150,16 @@
   <button class="btn ghost" id="fs" title="Helskärm (F)">⛶</button>
 </div>
 <div class="toast hidden" id="toast">Tappade anslutningen till servern…</div>
+<dialog id="teamDlg"></dialog>
+<canvas id="confetti" class="hidden"></canvas>
 
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const M = (f) => "/media/" + encodeURIComponent(f);
+const hue = (name) => [...String(name)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % 360;
+const teamLabel = (t) => `${t.emoji ? `<i class="em">${t.emoji}</i>` : ""}${esc(t.name)}`;
+let podStage = 0, boardKey = "";
 const isAudio = (f) => /\.(mp3|m4a|aac|wav|ogg|oga|opus)$/i.test(f || "");
 const stage = $("#stage");
 let S = null, version = 0, renderedStep = -1, renderedKey = "", media = null, fadeTimer = null;
@@ -244,6 +268,8 @@ let revealTimer = null;
 function renderSlide() {
   clearInterval(revealTimer);
   stopMedia();
+  podStage = 0;
+  boardKey = "";
   const s = S, r = s.round, q = s.question;
   let html = "";
   switch (s.kind) {
@@ -332,7 +358,7 @@ function renderSlide() {
       html = `<div class="slide"><div class="kicker">Runda ${r.n} av ${s.rounds.length} klar</div><h1 class="sub display grad" style="font-size:9vh">Ställning</h1><div class="board" id="board"></div></div>`;
       break;
     case "final":
-      html = `<div class="slide"><h1 class="sub display grad" style="font-size:9vh">Slutresultat</h1><div class="podium" id="podium"></div><div class="board" id="board"></div></div>`;
+      html = `<div class="slide"><h1 class="sub display grad" style="font-size:9vh">Slutresultat</h1><div class="podium" id="podium"></div><div class="podhint" id="podhint"></div><div class="board small" id="board"></div></div>`;
       break;
     case "thanks":
       html = `<div class="slide"><div class="frame plate"><h1 class="hero display grad">Tack för att ni spelade!</h1></div>
@@ -363,7 +389,7 @@ function renderLive() {
   const s = S;
   if (s.kind === "lobby") {
     const chips = $("#chips");
-    if (chips) chips.innerHTML = s.teams.map((t) => `<span class="chip">${esc(t.name)}</span>`).join("") || `<span class="muted">Inga lag anslutna ännu…</span>`;
+    if (chips) chips.innerHTML = s.teams.map((t) => `<span class="chip" style="--h:${hue(t.name)}">${teamLabel(t)}</span>`).join("") || `<span class="muted">Inga lag anslutna ännu…</span>`;
   }
   if (s.kind === "question") {
     const a = $("#answered");
@@ -383,29 +409,67 @@ function renderLive() {
     if (box) {
       const letter = (a) => { const i = (s.question.options || []).indexOf(a); return i >= 0 ? "ABCD"[i] + " · " : ""; };
       box.innerHTML = s.teamAnswers.map((t) => `<button class="ta ${t.correct ? "ok" : "bad"} ${t.manual ? "manual" : ""}" data-id="${t.id}" data-c="${t.correct ? 1 : 0}" title="Klicka för att ändra rättningen">
-        <div class="tn">${t.correct ? "✓" : "✗"} ${esc(t.name)}</div><div class="tv">${t.answer ? letter(t.answer) + esc(t.answer) : "–"}</div></button>`).join("");
+        <div class="tn">${t.correct ? "✓" : "✗"} ${teamLabel(t)}</div><div class="tv">${t.answer ? letter(t.answer) + esc(t.answer) : "–"}</div></button>`).join("");
       box.querySelectorAll(".ta").forEach((b) => b.addEventListener("click", () =>
         action({ action: "mark", team: b.dataset.id, key: `${s.round.n - 1}-${s.q}`, value: b.dataset.c !== "1" })));
     }
   }
-  if (s.kind === "scores" || s.kind === "final") {
-    let rows = s.scores;
-    const max = Math.max(1, ...rows.map((x) => x.total));
-    const pod = $("#podium");
-    if (pod) {
-      const top = rows.slice(0, 3);
-      const order = [top[1], top[0], top[2]].filter(Boolean);
-      const h = { 1: 30, 2: 22, 3: 16 };
-      const col = { 1: "linear-gradient(var(--pink), var(--violet))", 2: "linear-gradient(var(--cyan), var(--violet))", 3: "linear-gradient(var(--violet), #3b2370)" };
-      pod.innerHTML = order.map((x) => `<div class="pod"><div class="nm">${esc(x.name)}</div><div class="pt">${x.total} poäng</div>
-        <div class="blk" style="height:${h[x.place] || 12}vh;background:${col[x.place] || col[3]}">${x.place}</div></div>`).join("");
-      rows = rows.slice(3);
-    }
-    const board = $("#board");
-    if (board) board.innerHTML = rows.slice(0, pod ? 7 : 10).map((x) => `<div class="brow card"><div class="fill" style="width:${(x.total / max) * 100}%"></div>
-      <span class="pl">${x.place}</span><span>${esc(x.name)}</span><span><span class="rs">${x.rounds.join(" · ")}</span>${x.total} p</span></div>`).join("")
-      || (pod ? "" : `<p class="muted">Inga lag ännu.</p>`);
+  if (s.kind === "scores" || s.kind === "final") renderScores();
+}
+
+function renderScores() {
+  const s = S;
+  let rows = s.scores || [];
+  const max = Math.max(1, ...rows.map((x) => x.total));
+  const pod = $("#podium");
+  if (pod) {
+    const count = Math.min(3, rows.length);
+    if (s.revealed) podStage = count;
+    const top = rows.slice(0, 3);
+    const order = [[top[1], 1], [top[0], 0], [top[2], 2]].filter(([x]) => x);
+    const h = { 1: 30, 2: 22, 3: 16 };
+    const col = ["linear-gradient(var(--pink), var(--violet))", "linear-gradient(var(--cyan), var(--violet))", "linear-gradient(var(--violet), #3b2370)"];
+    pod.innerHTML = order.map(([x, i]) => {
+      const shown = i >= count - podStage;
+      return `<div class="pod ${shown ? "" : "hide"} ${i === 0 ? "win" : ""}"><div class="nm">${shown ? teamLabel(x) : "?"}</div><div class="pt">${x.total} poäng</div>
+        <div class="blk" style="height:${shown ? (h[x.place] || 12) : 8}vh;background:${col[i]}">${shown ? x.place : ""}</div></div>`;
+    }).join("");
+    const left = count - podStage;
+    $("#podhint").textContent = left > 0 ? `Tryck → för att avslöja ${["vinnaren", "tvåan", "trean"][left - 1]}` : "";
+    rows = rows.slice(3);
   }
+  const board = $("#board");
+  if (!board) return;
+  const list = rows.slice(0, pod ? 7 : 10);
+  // Rita bara om när innehållet ändrats, så att inglidningen inte avbryts av nästa uppdatering.
+  const key = JSON.stringify([s.step, list.map((x) => [x.id, x.total, x.place])]);
+  if (key === boardKey && board.childElementCount) return;
+  const animate = !boardKey;   // animera bara första gången sliden visas
+  boardKey = key;
+  board.innerHTML = list.map((x, i) => `<div class="brow card ${animate ? "enter" : ""}" style="animation-delay:${(list.length - 1 - i) * 0.35}s"><div class="fill" style="width:${(x.total / max) * 100}%"></div>
+    <span class="pl">${x.place}</span><span>${teamLabel(x)}</span><span><span class="rs">${x.rounds.join(" · ")}</span>${x.total} p</span></div>`).join("")
+    || (pod ? "" : `<p class="muted">Inga lag ännu.</p>`);
+}
+
+// Konfetti när vinnaren avslöjas (egen, liten – inget bibliotek)
+function confetti() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const c = $("#confetti"), ctx = c.getContext("2d");
+  c.classList.remove("hidden");
+  c.width = innerWidth; c.height = innerHeight;
+  const colors = ["#ff3fb4", "#8b5cff", "#2fd6ff", "#33e39a", "#ffc94d"];
+  const parts = Array.from({ length: 220 }, () => ({ x: Math.random() * c.width, y: -20 - Math.random() * c.height * .5,
+    vx: (Math.random() - .5) * 4, vy: 2 + Math.random() * 4, r: Math.random() * Math.PI, vr: (Math.random() - .5) * .3,
+    w: 6 + Math.random() * 8, h: 10 + Math.random() * 10, col: colors[Math.floor(Math.random() * colors.length)] }));
+  const t0 = performance.now();
+  (function frame(t) {
+    ctx.clearRect(0, 0, c.width, c.height);
+    for (const p of parts) {
+      p.x += p.vx; p.y += p.vy; p.vy += .04; p.r += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.col; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+    }
+    if (t - t0 < 6000) requestAnimationFrame(frame); else { ctx.clearRect(0, 0, c.width, c.height); c.classList.add("hidden"); }
+  })(t0);
 }
 
 function drawQr() {
@@ -417,22 +481,44 @@ function drawQr() {
   box.innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
 }
 
-// --- Lag-panel (byt namn finns inte; ta bort lag som anslutit av misstag) -------
-$("#teamsBtn").addEventListener("click", () => {
+// --- Lagpanel -----------------------------------------------------------------------
+function teamPanel() {
   if (!S) return;
-  const list = S.teams.map((t, i) => `${i + 1}. ${t.name}`).join("\n") || "(inga lag)";
-  const n = prompt(`Anslutna lag:\n${list}\n\nSkriv numret på ett lag för att ta bort det, eller RESET för att nollställa hela quizet:`);
-  if (!n) return;
-  if (n.trim().toUpperCase() === "RESET") {
-    if (confirm("Nollställ quizet? Alla lag, svar och poäng raderas.")) action({ action: "reset" });
-    return;
-  }
-  const t = S.teams[+n - 1];
-  if (t && confirm(`Ta bort laget "${t.name}" och dess svar?`)) action({ action: "kick", team: t.id });
-});
+  const d = $("#teamDlg");
+  const draw = () => {
+    d.innerHTML = `<h3>Anslutna lag (${S.teams.length})</h3>
+      <div class="teamlist">${S.teams.map((t) => `<div class="teamrow"><span style="font-size:22px">${t.emoji || "🎵"}</span><span class="nm">${esc(t.name)}</span>
+        <button class="btn ghost xs" data-kick="${t.id}">Ta bort</button></div>`).join("") || `<p class="muted">Inga lag har anslutit ännu.</p>`}</div>
+      <p class="hint">Ta bort ett lag som anslutit av misstag. Lagets svar försvinner också.</p>
+      <div class="row" style="justify-content:space-between;margin-top:16px">
+        <button class="btn danger sm" data-reset>Börja om quizet…</button><button class="btn sm" data-close autofocus>Stäng</button></div>`;
+    d.querySelector("[data-close]").onclick = () => d.close();
+    d.querySelectorAll("[data-kick]").forEach((b) => b.onclick = () => {
+      if (b.dataset.sure) { action({ action: "kick", team: b.dataset.kick }).then(draw); return; }
+      b.dataset.sure = "1"; b.textContent = "Säker? Klicka igen"; b.classList.add("danger");
+    });
+    const rb = d.querySelector("[data-reset]");
+    rb.onclick = () => {
+      if (rb.dataset.sure) { action({ action: "reset" }).then(() => d.close()); return; }
+      rb.dataset.sure = "1"; rb.textContent = "Alla lag, svar och poäng raderas – klicka igen";
+    };
+  };
+  draw();
+  d.showModal();
+}
+$("#teamsBtn").addEventListener("click", teamPanel);
 
 // --- Kontroller ----------------------------------------------------------------
 function goNext() {
+  if (S && S.kind === "final" && !S.revealed) {
+    const count = Math.min(3, (S.scores || []).length);
+    if (podStage < count) {
+      podStage++;
+      renderScores();
+      if (podStage === count) { confetti(); action({ action: "reveal" }); }
+      return;
+    }
+  }
   if (S && S.kind === "answer" && S.revealed === false) action({ action: "reveal" });
   else action({ action: "next" });
 }
@@ -447,7 +533,7 @@ $("#jump").addEventListener("change", (e) => action({ action: "goto", step: +e.t
 $("#fs").addEventListener("click", toggleFs);
 function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
 document.addEventListener("keydown", (e) => {
-  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" || e.ctrlKey || e.metaKey || e.altKey || $("#teamDlg").open) return;
   if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); goNext(); }
   else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); action({ action: "prev" }); }
   else if (e.key === "p" || e.key === "P") togglePlay();

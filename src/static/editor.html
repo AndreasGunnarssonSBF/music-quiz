@@ -84,6 +84,7 @@
   <span class="ttl grow" id="barTitle"></span>
   <span class="pill status" id="status" title="Visa vad som saknas"></span>
   <span class="save" id="save"></span>
+  <button class="btn sm" id="testAll" title="Öppna storskärmen och prova quizet från början">▶ Testa</button>
 </div></div>
 
 <div class="wrap" style="padding-top:22px">
@@ -418,6 +419,7 @@ function questionInner(r, q, ri, qi) {
     </div>
     ${t === "trivia" ? imagesField(`${p}.images`) : ""}`;
   return `<div class="qh"><span class="n" data-qact="close" title="Stäng">${TYPES[t].label} ${qi + 1} ▴</span>
+      <button class="btn ghost xs" data-qact="test" title="Visa frågan på storskärmen">▶ Testa frågan</button>
       ${moveBtns}
       <button class="iconbtn" data-qact="dup" title="Duplicera">⧉</button>
       <button class="iconbtn" data-qact="del" title="Ta bort">✕</button></div>
@@ -601,6 +603,7 @@ function wireQuestion(card) {
     const q = qs[qi];
     if (a === "open") { openQs.add(q); return renderQuestion(ri, qi); }
     if (a === "close") { openQs.delete(q); renderQuestion(ri, qi); return card.scrollIntoView({ block: "nearest" }); }
+    if (a === "test") return testQuiz(ri, qi);
     if (a === "aiok") { delete q.ai; changed(); return renderQuestion(ri, qi); }
     if (a === "fillwrong") {
       const n = fillWrong(r, q);
@@ -657,6 +660,30 @@ function aiWrong(ri) {
     },
   });
 }
+
+// --- Testa på storskärmen -------------------------------------------------------------------
+async function testQuiz(ri, qi) {
+  clearTimeout(saveTimer);
+  while (saving) await new Promise((r) => setTimeout(r, 100));
+  await save();
+  if (PROBLEMS.length) { toast("Rätta det som saknas först – se listan överst.", true); showProblems(); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+  const info = await (await fetch("/api/admin/info", { cache: "no-store" })).json();
+  if (info.active && info.active !== ID && !confirm("Ett annat quiz pågår. Vill du avsluta det och testa det här? Svar och poäng i det pågående quizet sparas.")) return;
+  if (info.active === ID && !confirm("Quizet pågår redan. En testkörning börjar om från början och tar bort anslutna lag. Fortsätta?")) return;
+  const H = { "Content-Type": "application/json", "X-Musikquiz": "1" };
+  const r = await fetch("/api/admin/start", { method: "POST", headers: H, body: JSON.stringify({ id: ID, resume: false }) });
+  if (!r.ok) { const d = await r.json().catch(() => ({})); return toast(d.error || "Kunde inte starta.", true); }
+  // Stegnummer: ljudtest, lobby, regler, rundor – sedan per runda: start, frågor, facit, svar, ställning.
+  let step = 0;
+  if (ri !== undefined) {
+    step = 4;
+    for (let i = 0; i < ri; i++) step += 3 + 2 * Q.rounds[i].questions.length;
+    step += 1 + qi;
+  }
+  await fetch("/api/host/action", { method: "POST", headers: H, body: JSON.stringify({ action: "goto", step }) });
+  window.open("/host", "musikquiz-host");
+}
+$("#testAll").onclick = () => testQuiz();
 
 $("#addRound").onclick = () => {
   const prev = Q.rounds.at(-1);

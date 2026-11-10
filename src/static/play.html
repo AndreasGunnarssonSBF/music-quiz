@@ -67,6 +67,15 @@
   .meplace { text-align: center; padding: 20px; margin-bottom: 14px; }
   .meplace .display { font-size: 64px; }
   .conn { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); background: #3a1630; border: 1px solid var(--bad); color: #ffd1d6; padding: 8px 14px; border-radius: 999px; font-size: 13px; }
+  .emojis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 4px 0 6px; }
+  .emo { font-size: 26px; padding: 6px 0; border-radius: 10px; border: 1px solid transparent; background: rgba(0,0,0,.25); cursor: pointer; line-height: 1.2; -webkit-tap-highlight-color: transparent; }
+  .emo.sel { border-color: var(--pink); background: rgba(255,63,180,.22); transform: scale(1.08); }
+  .flash { position: fixed; inset: 0; pointer-events: none; z-index: 40; display: flex; align-items: center; justify-content: center; animation: flash 1.6s ease-out forwards; }
+  .flash.ok { background: radial-gradient(circle, rgba(51,227,154,.55), rgba(51,227,154,.15) 70%); }
+  .flash.bad { background: radial-gradient(circle, rgba(255,93,108,.5), rgba(255,93,108,.12) 70%); }
+  .flash span { font-family: var(--display); font-size: 72px; color: #fff; text-shadow: 0 4px 24px rgba(0,0,0,.4); }
+  @keyframes flash { 0% { opacity: 0 } 12% { opacity: 1 } 70% { opacity: 1 } 100% { opacity: 0 } }
+  @media (prefers-reduced-motion: reduce) { .flash { animation-duration: 2.4s } }
   .leave { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 13px; cursor: pointer; display: block; margin: 28px auto 0; }
 </style>
 </head>
@@ -119,7 +128,7 @@ function restart() { pollId++; version = 0; poll(pollId); }
 
 function render() {
   const s = state;
-  $("#teamName").textContent = s.team ? s.team.name : "";
+  $("#teamName").textContent = s.team ? `${s.team.emoji ? s.team.emoji + " " : ""}${s.team.name}` : "";
   $("#teamName").classList.toggle("hidden", !s.team);
   $("#leave").classList.toggle("hidden", !s.team);
   if (s.kind === "idle") {
@@ -131,6 +140,13 @@ function render() {
   if (!token || !s.team) return renderJoin();
 
   if (s.kind === "question") return renderAnswering(s);
+  flashResult(s);
+  if (s.kind === "final" && s.pending) {
+    if (renderedKey === "pending") return;
+    renderedKey = "pending";
+    view.innerHTML = wait("Snart vet vi!", "Håll utkik på storskärmen – vinnaren avslöjas nu.");
+    return;
+  }
   // Bygg bara om vyn när innehållet ändrats, så att fokus och scroll ligger kvar.
   const key = JSON.stringify([s.kind, s.round, s.current, s.questions, s.scores, s.me]);
   if (key === renderedKey) return;
@@ -167,6 +183,24 @@ function render() {
   }
 }
 
+// Grön eller röd blinkning när facit för den aktuella frågan visas.
+const flashed = new Set();
+function flashResult(s) {
+  if (s.kind !== "answer" || !s.questions) return;
+  const q = s.questions.find((x) => x.q === s.current);
+  if (!q || !("facit" in q)) return;
+  const key = `${s.round.n}-${q.q}`;
+  if (flashed.has(key)) return;
+  flashed.add(key);
+  if (!q.answer) return;
+  const el = document.createElement("div");
+  el.className = "flash " + (q.correct ? "ok" : "bad");
+  el.innerHTML = `<span>${q.correct ? "RÄTT!" : "FEL"}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1700);
+  if (navigator.vibrate) try { navigator.vibrate(q.correct ? [60, 60, 60] : 300); } catch (e) {}
+}
+
 function roundHead(r, extra) {
   return `<div class="roundhead"><div class="kicker">Runda ${r.n} av ${r.of}${extra ? " · " + extra : ""}</div>
     <h2 class="display">${esc(r.title)}</h2><div class="muted">${esc(r.instruction)}</div></div>`;
@@ -200,7 +234,7 @@ function scores(s) {
   const me = s.me ? `<div class="meplace card"><div class="muted">Ni ligger på plats</div>
       <div class="display grad">${s.me.place} av ${s.me.of}</div><div>${s.me.total} poäng</div></div>` : "";
   const rows = (s.scores || []).map((x) => `<div class="row card ${s.team && x.name === s.team.name ? "me" : ""}">
-      <span class="pl">${x.place}</span><span class="nm">${esc(x.name)}</span><span class="pt">${x.total} p</span></div>`).join("");
+      <span class="pl">${x.place}</span><span class="nm">${x.emoji ? x.emoji + " " : ""}${esc(x.name)}</span><span class="pt">${x.total} p</span></div>`).join("");
   const thanks = s.kind === "thanks" ? `<p class="note">Tack för att ni spelade!</p>` : "";
   return `<h2 class="display">${title}</h2>${me}<div class="score">${rows}</div>${thanks}`;
 }
@@ -268,16 +302,23 @@ function renderJoin() {
     <form class="join card" id="joinForm">
       <label for="name">Lagnamn</label>
       <input id="name" maxlength="30" autocomplete="off" autocapitalize="words" placeholder="T.ex. Bandet utan namn" required>
+      <label style="margin-top:14px">Välj lagets symbol</label>
+      <div class="emojis" id="emojis">${(state.emojis || []).map((e) => `<button type="button" class="emo" data-e="${e}">${e}</button>`).join("")}</div>
       <button class="btn" type="submit">Gå med</button>
       <p class="err" id="err"></p>
     </form>`;
+  const emos = [...view.querySelectorAll(".emo")];
+  let emoji = emos.length ? emos[Math.floor(Math.random() * emos.length)].dataset.e : "";
+  const pick = (e) => emos.forEach((b) => b.classList.toggle("sel", b.dataset.e === e));
+  pick(emoji);
+  emos.forEach((b) => b.onclick = () => { emoji = b.dataset.e; pick(emoji); });
   $("#joinForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector("button");
     btn.disabled = true; $("#err").textContent = "";
     try {
       const res = await fetch("/api/join", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: $("#name").value }) });
+        body: JSON.stringify({ name: $("#name").value, emoji }) });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Något gick fel.");
       setToken(d.token); renderedKey = ""; restart();

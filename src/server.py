@@ -26,9 +26,12 @@ import library
 from library import Library, check, prepare
 from tunnel import Tunnel, resource_dir
 
-APP_VERSION = "2.1"
+APP_VERSION = "2.2"
 STATIC_DIR = os.path.join(resource_dir(), "static")
 MAX_TEAMS = 80
+# Lagens symboler (väljs på mobilen när laget går med)
+TEAM_EMOJI = ["🎸", "🥁", "🎹", "🎤", "🎺", "🎷", "🎻", "🎶", "🎧", "📻", "💿", "🦄",
+              "🐙", "🦊", "🐸", "🐼", "🦁", "🐝", "🔥", "⚡", "🌈", "🍕", "🌮", "🚀"]
 POLL_TIMEOUT = 25
 IDLE_QUIT = 15 * 60          # sekunder utan någon öppen värdsida innan appen stänger sig själv
 MAX_QUIZ_JSON = 5 * 1024 * 1024
@@ -202,7 +205,7 @@ class Game:
                 hi = self.revealed_upto(r)
                 per_round.append(sum(1 for q in range(hi + 1)
                                      if not self.answer_hidden(r, q) and self.is_correct(tid, r, q)))
-            rows.append({"id": tid, "name": t["name"], "rounds": per_round, "total": sum(per_round)})
+            rows.append({"id": tid, "name": t["name"], "emoji": t.get("emoji", ""), "rounds": per_round, "total": sum(per_round)})
         rows.sort(key=lambda x: (-x["total"], x["name"].lower()))
         place = 0
         for i, row in enumerate(rows):
@@ -354,7 +357,9 @@ class App:
         if tid and not team:
             out["kicked"] = True
         if team:
-            out["team"] = {"name": team["name"]}
+            out["team"] = {"name": team["name"], "emoji": team.get("emoji", "")}
+        else:
+            out["emojis"] = TEAM_EMOJI
         if "r" in s:
             r = s["r"]
             out["round"] = self.round_info(r)
@@ -376,9 +381,11 @@ class App:
             out["questions"] = qs
             out["current"] = s.get("q")
             out["locked"] = g.locked(r)
-        if s["kind"] in ("scores", "final", "thanks"):
+        if s["kind"] == "final" and g.revealed != g.step:
+            out["pending"] = True   # vinnaren avslöjas först på storskärmen
+        elif s["kind"] in ("scores", "final", "thanks"):
             rows = g.scores()
-            out["scores"] = [{"name": x["name"], "total": x["total"], "place": x["place"]} for x in rows[:10]]
+            out["scores"] = [{"name": x["name"], "emoji": x["emoji"], "total": x["total"], "place": x["place"]} for x in rows[:10]]
             me = next((x for x in rows if x["id"] == tid), None)
             if me:
                 out["me"] = {"total": me["total"], "place": me["place"], "of": len(rows)}
@@ -397,7 +404,7 @@ class App:
                     "soundcheck": quiz.data.get("soundcheck"), "outro": quiz.data.get("outro"),
                     "background": quiz.data.get("background"),
                     "rounds": [self.round_info(r) for r in range(len(quiz.rounds))]})
-        teams = [{"id": tid, "name": t["name"]} for tid, t in g.teams.items()]
+        teams = [{"id": tid, "name": t["name"], "emoji": t.get("emoji", "")} for tid, t in g.teams.items()]
         teams.sort(key=lambda x: g.teams[x["id"]]["joined"])
         out["teams"] = teams
         if "r" in s:
@@ -419,13 +426,14 @@ class App:
                     out["counts"] = {o: sum(1 for tid in g.teams if g.answers.get(tid, {}).get(key) == o)
                                      for o in quiz.options[(r, q)]}
                     out["teamAnswers"] = [{
-                        "id": t["id"], "name": t["name"],
+                        "id": t["id"], "name": t["name"], "emoji": t["emoji"],
                         "answer": g.answers.get(t["id"], {}).get(key, ""),
                         "correct": g.is_correct(t["id"], r, q),
                         "manual": key in g.marks.get(t["id"], {}),
                     } for t in teams]
         if s["kind"] in ("scores", "final"):
             out["scores"] = g.scores()
+            out["revealed"] = g.revealed == g.step
         return out
 
 
@@ -578,9 +586,10 @@ class BaseHandler(BaseHTTPRequestHandler):
                     return self.erred(409, "Quizet är fullt.")
                 tid = secrets.token_hex(4)
                 token = secrets.token_urlsafe(16)
-                g.teams[tid] = {"name": name, "token": token, "joined": time.time()}
+                emoji = d.get("emoji") if d.get("emoji") in TEAM_EMOJI else random.choice(TEAM_EMOJI)
+                g.teams[tid] = {"name": name, "emoji": emoji, "token": token, "joined": time.time()}
                 g.changed()
-            return self.sent(200, _json({"token": token, "name": name}))
+            return self.sent(200, _json({"token": token, "name": name, "emoji": emoji}))
         try:
             r, q = int(d.get("r")), int(d.get("q"))
         except (TypeError, ValueError):

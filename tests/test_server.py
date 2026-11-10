@@ -85,6 +85,19 @@ check("import av zip med farliga sökvägar", s == 200 and not os.path.exists(os
 s, d = call(ADMIN, "PUT", "/api/admin/import", raw, {"X-Musikquiz": "1"})
 check("exporterad fil går att importera", s == 200)
 
+# Lagsymbol och spärrat slutresultat
+s, j2 = call(PUBLIC, "POST", "/api/join", {"name": "Emojilaget", "emoji": "🦄"}, {"Content-Type": "application/json"})
+check("vald lagsymbol sparas", j2.get("emoji") == "🦄")
+s, j3 = call(PUBLIC, "POST", "/api/join", {"name": "Fusklaget", "emoji": "<script>"}, {"Content-Type": "application/json"})
+check("okänd lagsymbol ersätts", j3.get("emoji") != "<script>" and j3.get("emoji"))
+s, hv = call(ADMIN, "GET", "/api/host/state?v=0")
+call(ADMIN, "POST", "/api/host/action", {"action": "goto", "step": len(hv["steps"]) - 2}, H)
+s, ps = call(PUBLIC, "GET", f"/api/state?v=0&token={j2['token']}")
+check("mobilen ser inte vinnaren före avslöjandet", ps["kind"] == "final" and ps.get("pending") and "scores" not in ps)
+call(ADMIN, "POST", "/api/host/action", {"action": "reveal"}, H)
+s, ps = call(PUBLIC, "GET", f"/api/state?v=0&token={j2['token']}")
+check("mobilen ser resultatet efter avslöjandet", "scores" in ps and ps["scores"][0].get("emoji"))
+
 # Quiz från AI: AI-markering och standardregler följer med
 ai_quiz = {"title": "AI-quiz", "rounds": [{"title": "R1", "type": "video", "instruction": "Vem?", "questions": [
     {"ai": True, "options": ["Roxette", "Europe", "", ""], "song": "The Look"}]}]}
